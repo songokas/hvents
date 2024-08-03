@@ -1,0 +1,13 @@
+[Unit]
+Description=Home event automation
+
+[Service]
+User=hvents
+Group=hvents
+WorkingDirectory=/opt/hvents
+ExecStart=/usr/bin/hvents events.yaml
+Restart=on-failure
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

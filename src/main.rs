@@ -58,6 +58,8 @@ fn main() -> Result<(), anyhow::Error> {
     )?;
     let events = events.merge(config.events);
 
+    info!("Loaded {} events", events.len());
+
     validate_events(&events, &config.start_with, &config.http)?;
 
     let (queue_tx, queue_rx) = mpsc::channel();
@@ -144,7 +146,7 @@ fn main() -> Result<(), anyhow::Error> {
                 debug!("Restore event {}", timer_event.executing_event.event_id);
                 time_events.insert(timer_event);
             } else {
-                debug!("Start event {}", event.name);
+                info!("Start event {}", event.name);
                 queue_tx.send(event)?;
             }
         }

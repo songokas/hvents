@@ -11,13 +11,52 @@ Supports:
 
 # How to install
 
+## Install deb
+
+```
+wget https://github.com/songokas/hvents/releases/download/v0.1.0/hvents_0.1.0_amd64.deb \
+  && sudo apt install ./hvents_0.1.0_amd64.deb
+```
+
+## Download binary
+
+https://github.com/hvens/hvents/releases
+
+
 ## Install from source
 
-cargo install --git https://songokas/hvents
+```bash
+cargo install --bins --root=. --git=https://github.com/songokas/hvents
+```
 
 # How to configure and run
 
-## Configure
+## Start with a minimal configuration
+
+```yaml
+# events.yaml
+events:
+    schedule_print:
+        time:
+            execute_time: in 5 seconds
+        data: Executed every 5 seconds
+        next_event: print_to_stdout
+    print_to_stdout:
+        print: stdout
+
+start_with:
+  - schedule_print
+```
+
+Run
+
+```
+hvents events.yaml
+```
+
+Add more events as needed
+
+## Configurion options
 
 Create a global configuration file:
 
@@ -32,7 +71,7 @@ groups:
 
 # events are loaded from specified files
 # optional
-event_file:
+event_files:
     - doors.yaml
 
 # events defined in the same configuration file
@@ -42,7 +81,11 @@ events:
         mqtt_subscribe:
             topic: security/hall/movement
             body: "True"
-        next_event: schedule_light_on
+        next_event: light_on
+    light_on:
+        mqtt_publish:
+            topic: cmnd/hall/Power
+            template: on
 
 # specify which events to start with
 start_with:
@@ -56,7 +99,7 @@ start_with:
 # optional
 mqtt:
   default: # pool_id - defines which client to use for mqtt events
-    host: pi.lan
+    host: host
     port: 1883 # optional
     user: user # optional
     pass: pass # optional
@@ -70,7 +113,7 @@ http:
 
 # restore events from the directory specified, between startups
 # optional, no restore by default
-restore: events/
+restore: data/
 
 # specify location for sunrise, sunset calculations
 # optional
@@ -165,8 +208,18 @@ door_announce_back:
 
 ## Run 
 
-```
+### Manually
+
+```bash
 hvents events.yaml
+```
+
+### With systemd
+
+Working directory /opt/hvents
+
+```bash
+systemctl start hvents
 ```
 
 ## Available events

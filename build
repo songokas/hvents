@@ -1,0 +1,69 @@
+#!/bin/bash
+
+set -eEux -o pipefail
+
+TARGETS=(x86_64-unknown-linux-gnu)
+RELEASE="release"
+
+BIN_RELEASE_TARGETS=(x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu armv7-unknown-linux-gnueabihf x86_64-unknown-linux-musl)
+DEB_RELEASE_TARGETS=(x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu armv7-unknown-linux-gnueabihf)
+BIN_WINDOWS_TARGETS=(x86_64-pc-windows-gnu)
+
+build() {
+    mkdir -p dist
+    for target in ${TARGETS[@]}; do
+        cargo build --target "$target" "--$RELEASE"
+        cp target/$target/release/hvents dist/
+    done
+}
+
+build_pi() {
+    cross build --target "aarch64-unknown-linux-gnu" --release
+}
+
+release_bins() {
+    for target in ${BIN_RELEASE_TARGETS[@]}; do
+        cross build --target "$target" --release
+        cp target/$target/release/hvents dist/hvents-$target
+    done
+
+    for target in ${BIN_WINDOWS_TARGETS[@]}; do
+        cross build --target "$target" --release
+        cp target/$target/release/hvents.exe dist/hvents-$target.exe
+    done
+}
+
+release_dist() {
+    rm -f ./dist/*
+    release_bins
+    release_deb
+    sign
+}
+
+release_deb() {
+    if [[ $(docker images -q buster/cargo-deb 2> /dev/null) == "" ]]; then
+        docker build -t buster/cargo-deb builder
+    fi
+    for target in ${DEB_RELEASE_TARGETS[@]}; do
+        docker run --mount type=bind,source="$(pwd)",target=/volume --rm buster/cargo-deb --target $target --no-build --no-strip
+        cp target/$target/debian/hvents*.deb dist/
+    done
+}
+
+sign() {
+    cd dist
+
+    local sum_name="SHA512SUMS"
+    local sum_path="../target/$sum_name"
+
+    rm -f $sum_name
+    rm -f $sum_name.sig
+    > $sum_path
+    for f in *; do
+        sha512sum "$f" >> $sum_path
+    done
+    cp $sum_path .
+    gpg --detach-sign --armor -o "$sum_name.sig" $sum_name
+}
+
+$1

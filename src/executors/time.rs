@@ -56,6 +56,11 @@ pub fn timed_executor(
                     next_event_template: message.executing_event.next_event_template,
                     data: message.executing_event.data,
                 })?;
+            } else {
+                debug!(
+                    "Ignoring event {} since its expired {:?}",
+                    message.executing_event.name, reschedule_event.execute_time
+                );
             }
             database.remove(&event_id);
             delay_events.insert(event_id, Instant::now());

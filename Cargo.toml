@@ -3,14 +3,27 @@ name = "hvents"
 version = "0.1.0"
 edition = "2021"
 
+authors = ["Tomas Jakstas <tom.jakstas@gmail.com>"]
+description = "Configuration based home automation"
+homepage = "https://github.com/songokas/hvents"
+repository = "https://github.com/songokas/hvents"
+license = "LICENSE"
+readme = "README.md"
+
 [dependencies]
+reqwest = { version = "0.12", default-features = false, features = [
+    "charset",
+    "blocking",
+    "http2",
+    "macos-system-configuration",
+    "rustls-tls",
+] }
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["derive"] }
 env_logger = "0.11"
 handlebars = "6"
 human-date-parser = "0.1"
 log = "0.4"
-reqwest = { version = "0.12", features = ["blocking"] }
 rumqttc = { version = "0.24" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -23,8 +36,47 @@ notify = { version = "6.1.1", default-features = false, features = [
 ] }
 tiny_http = "0.12"
 
+[build-dependencies]
+cargo-deb = "2"
+
 [profile.release]
 panic = 'abort'
+strip = "debuginfo"
 
 [profile.dev]
 panic = 'abort'
+
+[package.metadata.deb]
+name = "hvents"
+maintainer = "Tomas Jakstas <tom.jakstas@gmail.com>"
+copyright = "2024, Tomas Jakstas <tom.jakstas@gmail.com>"
+extended-description = """\
+Configuration based home automation\
+"""
+depends = "$auto"
+section = "utility"
+priority = "optional"
+maintainer-scripts = "builder/debian"
+revision = ""
+assets = [
+    [
+        "target/release/hvents",
+        "usr/bin/",
+        "755",
+    ],
+    [
+        "example.yaml",
+        "opt/hvents/example.yaml",
+        "644",
+    ],
+    [
+        "README.md",
+        "usr/share/doc/hvents/README",
+        "644",
+    ],
+    [
+        "builder/debian/service",
+        "lib/systemd/system/hvents.service",
+        "644",
+    ],
+]

@@ -8,11 +8,13 @@ pub mod file_watch;
 pub mod file_write;
 pub mod mqtt_publish;
 pub mod mqtt_subscribe;
+pub mod print;
 pub mod time;
 
 use command::CommandEvent;
 use data::Data;
 use indexmap::{IndexMap, IndexSet};
+use print::PrintEvent;
 use serde::{Deserialize, Serialize};
 use std::{borrow::Borrow, hash::Hash};
 
@@ -39,6 +41,7 @@ pub enum EventType {
     Watch(WatchEvent),
     FileChanged(FileChangedEvent),
     Execute(CommandEvent),
+    Print(PrintEvent),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,19 +55,6 @@ pub struct ReferencingEvent {
     #[serde(default)]
     pub data: Data,
 }
-
-// impl ReferencingEvent {
-//     pub fn merge_data(&mut self, b: Data) {
-//         match self.data {
-//             Data::Json(v) => merge_json_value(v, b)
-//             Data::String(_) => todo!(),
-//             Data::Bytes(_) => todo!(),
-//             Data::Empty => todo!(),
-//         }
-
-//         // merge_json_value(&mut self.data, b);
-//     }
-// }
 
 impl Eq for ReferencingEvent {}
 
@@ -125,6 +115,10 @@ impl Events {
 
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
     }
 }
 

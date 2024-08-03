@@ -1,0 +1,114 @@
+events:
+    dummy:
+        time:
+            executime_time: next year
+start_with:
+  - dummy
+
+# Example configuration
+  
+# events are loaded from specified files with prefix from the key
+# optional
+# groups:
+#   weather: events/weather.yaml
+#   door: events/doors.yaml
+
+# events are loaded from specified files
+# optional
+# event_files:
+#   - events/weather.yaml
+#   - events/doors.yaml
+
+# events defined in the same configuration file
+# optional
+# events:
+#     movement:
+#       mqtt_subscribe:
+#           topic: security/hall/movement
+#           body: "True"
+#       next_event: schedule_light_on
+
+#     schedule_light_on:
+#       time:
+#         execute_period:
+#           from: 23:00
+#           to: 05:00
+#       next_event: light_on
+
+#     schedule_light_off:
+#       time:
+#         execute_time: in 20 seconds
+#       next_event: light_off
+
+#     light_on:
+#       mqtt_publish:
+#         topic: cmnd/hall/Power
+#         template: on
+#       next_event: schedule_light_off
+
+#     schedule_retrieval:
+#       time:
+#         execute_time: 7:00
+#       next_event: retrieve_json
+
+#     retrieve_json:
+#       api_call: 
+#         url: https://0.0.0.0:9022/data.json
+#       next_event: cache_file
+
+#     cache_file:
+#       file_write: cache/data.json
+
+#     write_file:
+#       file_write: data.json
+#       next_event: return_json
+
+#     read_file:
+#       file_read: cache/data.json
+
+#     return_json:
+#       api_listen:
+#         path: data.json
+#         response_content: json
+    
+#     data_change:
+#       file_changed:
+#         path: cache/data.json
+#       next_event: write_file
+    
+#     watch_for_changes:
+#       watch:
+#         path: cache
+
+
+# events to start with on startup
+# start_with:
+#   - movement
+#   - schedule_retrieval
+#   - watch_for_changes
+
+
+# configure mqtt clients
+# optional
+# mqtt:
+#   default: # pool_id - defines which client to use for mqtt events
+#     host: pi.lan
+#     port: 1883 # optional
+#     user: user # optional
+#     pass: pass # optional
+#     client_id: homeevents # optional
+
+# restore events from the directory specified, between startups
+# optional, no restore by default
+# restore: data/
+
+# specify location for sunrise, sunset calculations
+# optional
+# location:
+#   latitude: 43.6532
+#   longitude: -79.3832
+
+# host and port to listen on for api_listen events
+# optional
+# http:
+#   default: "0.0.0.0:9022"

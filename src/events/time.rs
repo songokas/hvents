@@ -7,7 +7,7 @@ use serde::{de, Deserialize, Serialize};
 
 use crate::config::location;
 
-pub const COOL_DOWN_DURATION: Duration = Duration::from_millis(5000);
+pub const COOL_DOWN_DURATION: Duration = Duration::from_millis(3000);
 pub const EXECUTION_PERIOD: Duration = Duration::from_millis(1000);
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

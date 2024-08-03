@@ -1,0 +1,9 @@
+[ -z "$SERVER_HOME" ] && SERVER_HOME=/opt/hvents
+[ -z "$SERVER_USER" ] && SERVER_USER=hvents
+
+useradd --system "$SERVER_USER" --no-create-home --shell /bin/false || true
+install -o "$SERVER_USER" -g "$SERVER_USER" -m 0750 -d "$SERVER_HOME"
+
+if [ ! -f "$SERVER_HOME/events.yaml" ]; then
+    install -g "$SERVER_USER" -o "$SERVER_USER" -m 0600 "$SERVER_HOME/example.yaml" "$SERVER_HOME/events.yaml"
+fi

@@ -1,4 +1,4 @@
-use std::{fs::File, io::Write};
+use std::{fs::File, io::Write, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -41,13 +41,13 @@ impl FileWriteEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 enum FileWriteConfig {
-    File(String),
+    File(PathBuf),
     Config(FileWrite),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct FileWrite {
-    file: String,
+    file: PathBuf,
     #[serde(default)]
     mode: FileWriteMode,
 }

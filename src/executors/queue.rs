@@ -205,6 +205,7 @@ pub fn event_executor(
                 Ok(d) => received.data.merge(d),
                 Err(e) => error!("Failed to execute command {} {e}", c.command),
             },
+            EventType::Print(e) => e.run(&received.data),
         }
 
         let Some(ref_event) = next_event_name else {
