@@ -1,0 +1,30 @@
+[package]
+name = "hvents"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4", features = ["derive"] }
+env_logger = "0.11"
+handlebars = "6"
+human-date-parser = "0.1"
+log = "0.4"
+reqwest = { version = "0.12", features = ["blocking"] }
+rumqttc = { version = "0.24" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+anyhow = "1"
+sunrise = "1"
+indexmap = { version = "2", features = ["serde"] }
+notify = { version = "6.1.1", default-features = false, features = [
+    "macos_kqueue",
+] }
+tiny_http = "0.12"
+
+[profile.release]
+panic = 'abort'
+
+[profile.dev]
+panic = 'abort'
