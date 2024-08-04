@@ -3,19 +3,20 @@
 Very simple event automation system to manage home events easily by defining it in a configuration file.
 
 Supports:
-    - time events
-    - mqtt events
-    - http events
-    - file events
-    - external commands
+
+* time events
+* mqtt events
+* http events
+* file events
+* external commands
 
 # How to install
 
 ## Install deb
 
 ```
-wget https://github.com/songokas/hvents/releases/download/v0.1.0/hvents_0.1.0_amd64.deb \
-  && sudo apt install ./hvents_0.1.0_amd64.deb
+wget https://github.com/songokas/hvents/releases/download/v0.1.1/hvents_0.1.1_amd64.deb \
+  && sudo apt install ./hvents_0.1.1_amd64.deb
 ```
 
 ## Download binary
@@ -56,7 +57,7 @@ hvents events.yaml
 
 Add more events as needed
 
-## Configurion options
+## Configuration options
 
 Create a global configuration file:
 
@@ -147,13 +148,13 @@ schedule_light_off:
 light_on:
   mqtt_publish:
     topic: cmnd/hall/Power
-    body: on
+    template: on
   next_event: schedule_light_off
 
 light_off:
   mqtt_publish:
     topic: cmnd/hall/Power
-    body: off
+    template: off
 ```
 
 ```yaml
@@ -229,7 +230,7 @@ systemctl start hvents
 ```yaml
   mqtt_publish:
     topic: announce/back-door
-    body: back door open
+    template: back door open # optional event.data will be used if template is not defined
     pool_id: default # optional client to use for publishing events
 ```
 
@@ -261,6 +262,10 @@ Mqtt request body must contain a string to match
 ```
 
 ### Read from file
+
+```yaml
+  file_read: /tmp/file
+```
 
 ```yaml
   file_read: 
@@ -361,10 +366,10 @@ Period to allow execution of the next event
 Available date time format can be found on https://lib.rs/crates/human-date-parser#readme-formats
 
 Additional formats supported:
- - sunset
- - sunset in 1 hours
- - sunrise
- - sunrise in 20 seconds
+* sunset
+* sunset in 1 hours
+* sunrise
+* sunrise in 20 seconds
 
 ## Event references and data
 

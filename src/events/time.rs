@@ -1,11 +1,11 @@
 use core::{fmt::Display, str::FromStr};
 use std::time::Duration;
 
-use chrono::{DateTime, Datelike, Local, NaiveDateTime, NaiveTime};
+use chrono::{DateTime, Datelike, Days, Local, NaiveDateTime, NaiveTime};
 use human_date_parser::{from_human_time, ParseError, ParseResult};
 use serde::{de, Deserialize, Serialize};
 
-use crate::config::location;
+use crate::config::{location, now};
 
 pub const COOL_DOWN_DURATION: Duration = Duration::from_millis(3000);
 pub const EXECUTION_PERIOD: Duration = Duration::from_millis(1000);
@@ -157,7 +157,7 @@ impl FromStr for TimeResult {
         };
         if s.contains("sunset") || s.contains("sunrise") {
             if let Some((lat, long)) = location() {
-                return parse_sunset(s, lat, long);
+                return parse_sunrise_sunset(s, lat, long);
             } else {
                 return Err(invalid_value());
             }
@@ -173,7 +173,7 @@ impl FromStr for TimeResult {
     }
 }
 
-fn parse_sunset(s: &str, lat: f64, long: f64) -> Result<TimeResult, ParseError> {
+fn parse_sunrise_sunset(s: &str, lat: f64, long: f64) -> Result<TimeResult, ParseError> {
     let invalid_value = || ParseError::ValueInvalid {
         amount: s.to_string(),
     };
@@ -209,26 +209,48 @@ fn parse_sunset(s: &str, lat: f64, long: f64) -> Result<TimeResult, ParseError> 
                 DateTime::from_timestamp(sunrise, 0)
                     .map(Into::into)
                     .ok_or_else(invalid_value)?
-            } else {
+            } else if s.contains("sunset") {
                 DateTime::from_timestamp(sunset, 0)
                     .map(Into::into)
                     .ok_or_else(invalid_value)?
+            } else {
+                return Err(invalid_value());
             };
             TimeResult::Date((dt.naive_local(), s.to_string()))
         }
         ParseResult::Time(_) => return Err(invalid_value()),
         ParseResult::DateTime(d) => {
-            let (sunrise, sunset) =
-                sunrise::sunrise_sunset(lat, long, d.year(), d.month(), d.day());
-
-            let time_diff = Local::now() - d;
-            let utc = if replace_sunrise {
-                DateTime::from_timestamp(sunrise, 0).ok_or_else(invalid_value)? - time_diff
-            } else {
-                DateTime::from_timestamp(sunset, 0).ok_or_else(invalid_value)? - time_diff
+            let calculate = |d: DateTime<Local>| {
+                let (sunrise, sunset) =
+                    sunrise::sunrise_sunset(lat, long, d.year(), d.month(), d.day());
+                if replace_sunrise {
+                    Ok(DateTime::from_timestamp(sunrise, 0)
+                        .ok_or_else(invalid_value)?
+                        .into())
+                } else if replace_sunset {
+                    Ok(DateTime::from_timestamp(sunset, 0)
+                        .ok_or_else(invalid_value)?
+                        .into())
+                } else {
+                    Err(invalid_value())
+                }
             };
 
-            TimeResult::DateTime((utc.into(), s.to_string()))
+            let sun_dt: DateTime<Local> = calculate(d)?;
+            let now = now();
+            let time_diff = now.naive_local().time() - d.naive_local().time();
+
+            // if its today an sunrise/sunset happened calculate next
+            let dt = if sun_dt.date_naive() == now.date_naive() && now >= sun_dt {
+                calculate(
+                    now.checked_add_days(Days::new(1))
+                        .ok_or_else(invalid_value)?,
+                )? - time_diff
+            } else {
+                sun_dt - time_diff
+            };
+
+            TimeResult::DateTime((dt, s.to_string()))
         }
     })
 }
@@ -554,7 +576,7 @@ mod tests {
             ),
             // disabled because now can not be changed in the library
             // (
-            //     "sunrise",
+            //     "sunset in 1 hour",
             //     NaiveDate::from_ymd_opt(2024, 7, 31)
             //         .unwrap()
             //         .and_hms_opt(3, 59, 37)
@@ -630,6 +652,7 @@ mod tests {
             "wednesday 11:00".to_string(),
             "this week wednesday 11:00".to_string(),
             format!("{hour}:00"),
+            "in 1 day".to_string(),
         ];
         for time in data {
             let time_event: TimeEvent =

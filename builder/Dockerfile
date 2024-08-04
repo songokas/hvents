@@ -1,8 +1,9 @@
-FROM rust:slim-buster
+FROM rust:slim-bullseye
 
 RUN dpkg --add-architecture armhf && dpkg --add-architecture arm64
 
-RUN apt-get update && apt-get install -qy dpkg-dev g++-arm-linux-gnueabihf binutils-arm-linux-gnueabihf g++-aarch64-linux-gnu binutils-aarch64-linux-gnu libssl-dev
+RUN apt-get update && apt-get install -qy dpkg-dev g++-arm-linux-gnueabihf binutils-arm-linux-gnueabihf \
+    g++-aarch64-linux-gnu binutils-aarch64-linux-gnu libssl-dev binutils-common
 
 RUN rustup target add armv7-unknown-linux-gnueabihf aarch64-unknown-linux-gnu
 

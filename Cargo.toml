@@ -1,6 +1,6 @@
 [package]
 name = "hvents"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 
 authors = ["Tomas Jakstas <tom.jakstas@gmail.com>"]
@@ -41,7 +41,8 @@ cargo-deb = "2"
 
 [profile.release]
 panic = 'abort'
-strip = "debuginfo"
+strip = true
+lto = true
 
 [profile.dev]
 panic = 'abort'

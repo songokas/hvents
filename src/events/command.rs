@@ -29,7 +29,7 @@ impl CommandEvent {
             .stdout(Stdio::piped())
             .spawn()?;
 
-        child.stdin.expect("stdin").write_all(&data.as_bytes())?;
+        child.stdin.expect("stdin").write_all(&data.as_bytes()?)?;
         let reader = child.stdout.expect("stdout");
         Data::from_reader(reader, self.data_type)
     }

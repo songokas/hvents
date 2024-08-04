@@ -70,7 +70,13 @@ pub fn event_executor(
                         }
                         payload.into()
                     } else {
-                        received.data.as_bytes()
+                        match received.data.as_bytes() {
+                            Ok(b) => b,
+                            Err(e) => {
+                                error!("Mqtt publish unable to obtain bytes from data {e}");
+                                continue;
+                            }
+                        }
                     };
                     if payload.is_empty() {
                         info!("Empty body provided for topic={}. Ignoring", e.topic);

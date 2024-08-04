@@ -1,6 +1,6 @@
 use std::sync::mpsc::Sender;
 
-use log::debug;
+use log::{debug, error};
 use rumqttc::{Connection, Event, Incoming};
 
 use crate::events::{EventType, Events, ReferencingEvent};
@@ -10,17 +10,25 @@ pub fn mqtt_executor(
     events: &Events,
     queue_tx: Sender<ReferencingEvent>,
 ) -> Result<(), anyhow::Error> {
+    let mut show_error = true;
     for notification in connection.iter() {
         match notification {
             Ok(Event::Incoming(Incoming::Publish(packet))) => {
+                show_error = true;
                 debug!("Incoming mqtt event {} {:?}", packet.topic, packet.payload);
                 if let Some(e) = handle_incoming(events, &packet.topic, &packet.payload) {
                     queue_tx.send(e)?;
                 }
             }
-            Ok(_) => continue,
+            Ok(_) => {
+                show_error = true;
+                continue;
+            }
             Err(e) => {
-                panic!("Receive error {e}");
+                if show_error {
+                    error!("Receive mqtt error {e}. Suppressing further messages until success");
+                }
+                show_error = false;
             }
         };
     }

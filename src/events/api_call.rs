@@ -42,13 +42,13 @@ impl ApiCallEvent {
             RequestMethod::Delete => client.delete(&self.url).headers(headers).send()?.bytes()?,
             RequestMethod::Put => client
                 .put(&self.url)
-                .body(data.to_bytes())
+                .body(data.to_bytes()?)
                 .headers(headers)
                 .send()?
                 .bytes()?,
             RequestMethod::Post => client
                 .post(&self.url)
-                .body(data.to_bytes())
+                .body(data.to_bytes()?)
                 .headers(headers)
                 .send()?
                 .bytes()?,

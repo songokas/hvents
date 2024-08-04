@@ -1,7 +1,7 @@
 events:
     dummy:
         time:
-            executime_time: next year
+            execute_time: next year
 start_with:
   - dummy
 
@@ -65,7 +65,8 @@ start_with:
 
 #     read_file:
 #       file_read: cache/data.json
-
+#       next_event: write_file
+#
 #     return_json:
 #       api_listen:
 #         path: data.json
@@ -74,7 +75,8 @@ start_with:
 #     data_change:
 #       file_changed:
 #         path: cache/data.json
-#       next_event: write_file
+#         when: written
+#       next_event: read_file
     
 #     watch_for_changes:
 #       watch:

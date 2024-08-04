@@ -161,10 +161,13 @@ fn handle_incoming(
             }
         },
         (ResponseContent::Text, Some(t)) => t,
-        (ResponseContent::Bytes, _) => {
-            headers.insert("Content-Type".to_string(), "application/json".to_string());
-            ref_event.data.to_bytes()
-        }
+        (ResponseContent::Bytes, _) => match ref_event.data.to_bytes() {
+            Ok(b) => b,
+            Err(e) => {
+                warn!("Responding with OK unknown data {e}");
+                "OK".as_bytes().to_vec()
+            }
+        },
     };
 
     if let Some(mut event) = ref_event
