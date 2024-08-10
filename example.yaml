@@ -1,7 +1,6 @@
 events:
     dummy:
-        time:
-            execute_time: next year
+        time: next year
 start_with:
   - dummy
 

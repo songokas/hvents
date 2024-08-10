@@ -252,9 +252,7 @@ File will be written with data provided by the previous event or event.data defi
 
 ### Schedule at specific time
 
-Scheduling the same event will overwrite the previous event.
 
-All times are in local timezone.
 
 Execute event at 8:00:00
 
@@ -267,8 +265,12 @@ Execute event at 8:00:00 with event id
 ```yaml
   time:
     execute_time: 8:00
-    event_id: time_events # event id can be overwrite a previous event with the same id
+    event_id: time_events # event id can be used to overwrite a previous event with the same id
 ```
+
+Scheduling the same event will overwrite the previous event.
+
+All times are in local timezone.
 
 Available date time format can be found on https://lib.rs/crates/human-date-parser#readme-formats
 
@@ -280,7 +282,7 @@ Additional formats supported:
 
 ### Schedule at specific time and repeat
 
-Execute event at 8:00:00 and repeat at tomorrow 8:00:00
+Execute event at 8:00:00 and repeat tomorrow 8:00:00
 
 ```yaml
   repeat: 8:00
@@ -298,7 +300,7 @@ Allow event execution only at specific times
 
 ## Event references and data
 
-Each event can reference next event and define data which is merged together
+Each event can reference next event and define data, which is merged together
 as it goes through the chain
 
 example:
@@ -328,8 +330,6 @@ schedule_writing_datawrite_to_file_data
 
 ## Event examples
 
-Configure any events that you need
-
 ```yaml
 # events/hall.yaml
 movement:
@@ -339,15 +339,13 @@ movement:
   next_event: schedule_light_on
 
 schedule_light_on:
-  time:
-    execute_period:
+  period:
       from: 23:00
       to: 05:00
   next_event: light_on
 
 schedule_light_off:
-  time:
-    execute_time: in 20 seconds
+  time: in 20 seconds
   next_event: light_off
 
 light_on:
@@ -365,8 +363,7 @@ light_off:
 ```yaml
 # events/weather.yaml
 schedule:
-  time:
-    execute_time: 07:59
+  time: 07:59
   next_event: retrieve
 retrieve:
   api_call: 
@@ -376,8 +373,7 @@ store_file:
   file_write: events/data.json
   next_event: announce
 announce_8:
-  time:
-    execute_time: 8:00
+  time: 8:00
   next_event: announce_from_file
   data: {"forecastToShow":"today 8:00:00"}
 announce_from_file:

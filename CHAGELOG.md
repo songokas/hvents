@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - time event, http event queue not removing events
+- event queue do not block on command and api call events
 
 ## [0.1.1] - 2024-08-04
 
