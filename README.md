@@ -15,8 +15,8 @@ Supports:
 ## Install deb
 
 ```
-wget https://github.com/songokas/hvents/releases/download/v0.1.1/hvents_0.1.1_amd64.deb \
-  && sudo apt install ./hvents_0.1.1_amd64.deb
+wget https://github.com/songokas/hvents/releases/download/v0.2.0/hvents_0.2.0_amd64.deb \
+  && sudo apt install ./hvents_0.2.0_amd64.deb
 ```
 
 ## Download binary
@@ -38,8 +38,7 @@ cargo install --bins --root=. --git=https://github.com/songokas/hvents
 # events.yaml
 events:
     schedule_print:
-        time:
-            execute_time: in 5 seconds
+        time: in 5 seconds
         data: Executed every 5 seconds
         next_event: print_to_stdout
     print_to_stdout:
@@ -90,11 +89,7 @@ events:
 
 # specify which events to start with
 start_with:
-  - hall_movement
-  - weather_schedule
-  - weather_announce_8
-  - door_front_open
-  - door_back_open
+  - movement
 
 # configure mqtt clients
 # optional
@@ -121,90 +116,6 @@ restore: data/
 location:
     latitude: 52.37403
     longitude: 4.88969
-```
-
-Configure any events that you need
-
-```yaml
-# events/hall.yaml
-movement:
-  mqtt_subscribe:
-    topic: security/hall/movement
-    body: "True"
-  next_event: schedule_light_on
-
-schedule_light_on:
-  time:
-    execute_period:
-      from: 23:00
-      to: 05:00
-  next_event: light_on
-
-schedule_light_off:
-  time:
-    execute_time: in 20 seconds
-  next_event: light_off
-
-light_on:
-  mqtt_publish:
-    topic: cmnd/hall/Power
-    template: on
-  next_event: schedule_light_off
-
-light_off:
-  mqtt_publish:
-    topic: cmnd/hall/Power
-    template: off
-```
-
-```yaml
-# events/weather.yaml
-schedule:
-  time:
-    execute_time: 07:59
-  next_event: retrieve
-retrieve:
-  api_call: 
-    url: https://api.meteo.lt/v1/places/vilnius/forecasts/long-term
-  next_event: store_file
-store_file:
-  file_write: events/data.json
-  next_event: announce
-announce_8:
-  time:
-    execute_time: 8:00
-  next_event: announce_from_file
-  data: {"forecastToShow":"today 8:00:00"}
-announce_from_file:
-  file_read:
-    file: events/data.json
-  next_event: announce
-announce:
-  mqtt_publish:
-    topic: announce/weather
-    template: '{{#each forecastTimestamps}}{{#if (eq forecastTimeUtc (date-time-format ../forecastToShow "%Y-%m-%d %H:%M:%S"))}}Air temperature {{airTemperature}} degrees{{/if}}{{/each}}'
-```
-
-```yaml
-# events/doors.yaml
-door_front_open:
-  mqtt_subscribe:
-    topic: security/front-door/open
-    body: "True"
-  next_event: announce_front
-door_back_open:
-  mqtt_subscribe:
-    topic: security/back-door/open
-    body: "True"
-  next_event: announce_back
-door_announce_front:
-  mqtt_publish:
-    topic: announce/front-door
-    body: front door open
-door_announce_back:
-  mqtt_publish:
-    topic: announce/back-door
-    body: back door open
 ```
 
 ## Run 
@@ -339,28 +250,24 @@ File will be written with data provided by the previous event or event.data defi
         recursive: false # optional
 ```
 
-### Schedule times
+### Schedule at specific time
 
 Scheduling the same event will overwrite the previous event.
 
 All times are in local timezone.
 
-Time event is rescheduled automatically if its not in the past
-
 Execute event at 8:00:00
+
+```yaml
+  time: 8:00
+```
+
+Execute event at 8:00:00 with event id
 
 ```yaml
   time:
     execute_time: 8:00
-```
-
-Period to allow execution of the next event
-
-```yaml
-  time:
-    execute_period:
-      from: 23:00
-      to: 05:00
+    event_id: time_events # event id can be overwrite a previous event with the same id
 ```
 
 Available date time format can be found on https://lib.rs/crates/human-date-parser#readme-formats
@@ -370,6 +277,24 @@ Additional formats supported:
 * sunset in 1 hours
 * sunrise
 * sunrise in 20 seconds
+
+### Schedule at specific time and repeat
+
+Execute event at 8:00:00 and repeat at tomorrow 8:00:00
+
+```yaml
+  repeat: 8:00
+```
+
+### Allow event only for specific times
+
+Allow event execution only at specific times
+
+```yaml
+  period: 
+    from: 8:00
+    to: 10:00
+```
 
 ## Event references and data
 
@@ -385,11 +310,7 @@ subscribe:
     string_contains: "forecast"
   next_event: schedule_writing
 schedule_writing:
-  time:
-    execute_period:
-        from: 7:00
-        to: 9:00
-    execute_time: 8:00
+  time: 8:00
   next_event: write_to_file
   data: schedule_writing_data
 write_to_file:
@@ -403,4 +324,90 @@ would write
 #/tmp/test3
 forecast 22.2
 schedule_writing_datawrite_to_file_data
+```
+
+## Event examples
+
+Configure any events that you need
+
+```yaml
+# events/hall.yaml
+movement:
+  mqtt_subscribe:
+    topic: security/hall/movement
+    body: "True"
+  next_event: schedule_light_on
+
+schedule_light_on:
+  time:
+    execute_period:
+      from: 23:00
+      to: 05:00
+  next_event: light_on
+
+schedule_light_off:
+  time:
+    execute_time: in 20 seconds
+  next_event: light_off
+
+light_on:
+  mqtt_publish:
+    topic: cmnd/hall/Power
+    template: on
+  next_event: schedule_light_off
+
+light_off:
+  mqtt_publish:
+    topic: cmnd/hall/Power
+    template: off
+```
+
+```yaml
+# events/weather.yaml
+schedule:
+  time:
+    execute_time: 07:59
+  next_event: retrieve
+retrieve:
+  api_call: 
+    url: https://api.meteo.lt/v1/places/vilnius/forecasts/long-term
+  next_event: store_file
+store_file:
+  file_write: events/data.json
+  next_event: announce
+announce_8:
+  time:
+    execute_time: 8:00
+  next_event: announce_from_file
+  data: {"forecastToShow":"today 8:00:00"}
+announce_from_file:
+  file_read:
+    file: events/data.json
+  next_event: announce
+announce:
+  mqtt_publish:
+    topic: announce/weather
+    template: '{{#each forecastTimestamps}}{{#if (eq forecastTimeUtc (date-time-format ../forecastToShow "%Y-%m-%d %H:%M:%S"))}}Air temperature {{airTemperature}} degrees{{/if}}{{/each}}'
+```
+
+```yaml
+# events/doors.yaml
+door_front_open:
+  mqtt_subscribe:
+    topic: security/front-door/open
+    body: "True"
+  next_event: announce_front
+door_back_open:
+  mqtt_subscribe:
+    topic: security/back-door/open
+    body: "True"
+  next_event: announce_back
+door_announce_front:
+  mqtt_publish:
+    topic: announce/front-door
+    body: front door open
+door_announce_back:
+  mqtt_publish:
+    topic: announce/back-door
+    body: back door open
 ```

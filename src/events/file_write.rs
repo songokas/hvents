@@ -5,30 +5,24 @@ use serde::{Deserialize, Serialize};
 use super::Data;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FileWriteEvent(FileWriteConfig);
+pub struct FileWriteEvent {
+    pub file: PathBuf,
+    #[serde(default)]
+    pub mode: FileWriteMode,
+}
 
 impl FileWriteEvent {
     pub fn write(&self, data: &Data) -> Result<(), anyhow::Error> {
         let mut options = File::options();
-        let mut truncate_options = || {
-            options.write(true).truncate(true).create(true);
-        };
-        let file = match &self.0 {
-            FileWriteConfig::File(f) => {
-                truncate_options();
-                f
+        match self.mode {
+            FileWriteMode::Append => {
+                options.append(true).create(true);
             }
-            FileWriteConfig::Config(f) => {
-                match f.mode {
-                    FileWriteMode::Append => {
-                        options.append(true).create(true);
-                    }
-                    FileWriteMode::Truncate => truncate_options(),
-                };
-                &f.file
+            FileWriteMode::Truncate => {
+                options.write(true).truncate(true).create(true);
             }
         };
-        let mut h = options.open(file)?;
+        let mut h = options.open(&self.file)?;
         match data {
             Data::String(s) => h.write_all(s.as_bytes()).map_err(Into::into),
             Data::Bytes(s) => h.write_all(s).map_err(Into::into),
@@ -38,23 +32,9 @@ impl FileWriteEvent {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
-enum FileWriteConfig {
-    File(PathBuf),
-    Config(FileWrite),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct FileWrite {
-    file: PathBuf,
-    #[serde(default)]
-    mode: FileWriteMode,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
-enum FileWriteMode {
+pub enum FileWriteMode {
     Append,
     #[default]
     Truncate,
@@ -69,7 +49,7 @@ mod tests {
     #[test]
     fn test_write_truncate() {
         let data = Data::String("hello".to_string());
-        let json = r#""/tmp/_test_write_truncate""#;
+        let json = r#"{"file":"/tmp/_test_write_truncate"}"#;
         let event: FileWriteEvent = serde_json::from_str(json).unwrap();
         event.write(&data).unwrap();
         event.write(&data).unwrap();

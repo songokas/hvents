@@ -4,7 +4,7 @@ use env_logger::Env;
 use hvents::config::{init_location, ClientConfiguration, Config, PoolId};
 use hvents::database::{self, KeyValueStore};
 use hvents::events::api_listen::HttpQueue;
-use hvents::events::{EventMap, EventName, EventType, Events, TimerMessage};
+use hvents::events::{EventMap, EventName, EventType, Events, ReferencingEvent};
 use hvents::executors::file::file_changed_executor;
 use hvents::executors::http::http_executor;
 use hvents::executors::mqtt::mqtt_executor;
@@ -13,7 +13,7 @@ use hvents::executors::time::timed_executor;
 use hvents::pools::api::ClientPool;
 use hvents::pools::http::HttpQueuePool;
 use hvents::pools::mqtt::MqttPool;
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexMap;
 use log::{debug, info};
 use notify::{RecommendedWatcher, Watcher};
 use std::env::args;
@@ -133,25 +133,24 @@ fn main() -> Result<(), anyhow::Error> {
             )
         });
 
-        let mut time_events = IndexSet::new();
+        let mut time_events = IndexMap::new();
         for name in config.start_with.iter() {
             let event = events
                 .get_event_by_name(name)
                 .unwrap_or_else(|| panic!("Event {name} must exit"));
-            if let Some(timer_event) = event
-                .next_event
-                .as_ref()
-                .and_then(|e| database.get::<TimerMessage>(e))
-            {
-                debug!("Restore event {}", timer_event.executing_event.event_id);
-                time_events.insert(timer_event);
+            let event_id = events
+                .get_event_id(name)
+                .unwrap_or_else(|| panic!("Event {name} must exit"));
+            if let Some(timer_event) = database.get::<ReferencingEvent>(event_id) {
+                debug!("Restore event {}", event_id);
+                time_events.insert(event_id, timer_event);
             } else {
                 info!("Start event {}", event.name);
                 queue_tx.send(event)?;
             }
         }
         let _timer_handle =
-            s.spawn(|| timed_executor(time_events, timer_rx, queue_tx.clone(), database));
+            s.spawn(|| timed_executor(&events, time_events, timer_rx, queue_tx.clone(), database));
 
         Ok(())
     })

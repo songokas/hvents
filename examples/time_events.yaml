@@ -1,0 +1,20 @@
+
+events:
+  5_seconds:
+    time:
+      event_id: abc
+      execute_time: in 5 seconds
+    data: in 5 seconds
+    next_event: print_out
+  now:
+    time:
+      event_id: abc
+      execute_time: now
+    data: now
+    next_event: print_out
+  print_out:
+    print: stdout
+
+start_with:
+  - 5_seconds
+  - now

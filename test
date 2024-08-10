@@ -18,8 +18,7 @@ test_reschedule() {
     local config=$(cat <<EOF
 events:
     run_in_seconds:
-        time:
-            execute_time: in 5 seconds
+        repeat: in 4 seconds
         data: $data
         next_event: write_to_file
     write_to_file:
@@ -36,9 +35,9 @@ EOF
     rm "$file" || true
 
     $BIN <(echo -n "$config") & pids+=($!)
-    sleep 5
+    sleep 4
     assert_file_content "$file" "$data"
-    sleep 5
+    sleep 4
     assert_file_content "$file" "$data$data"
     kill "$pids"
 
@@ -140,6 +139,9 @@ test_api() {
     local file="/tmp/_test_write_api"
     local config=$(cat <<EOF
 events:
+    schedule_call_endpoint_a:
+        time: in 1 second
+        next_event: call_endpoint_a
     call_endpoint_a:
         api_call:
             url: http://127.0.0.1:8911/clients/1
@@ -148,6 +150,9 @@ events:
             response_content: text
         data: call_endpoint_a
         next_event: write_to_file
+    schedule_call_endpoint_b:
+        time: in 2 seconds
+        next_event: call_endpoint_b
     call_endpoint_b:
         api_call:
             url: http://127.0.0.1:8912/clients/1
@@ -184,8 +189,8 @@ http:
 start_with:
     - return_response_a
     - return_response_b
-    - call_endpoint_a
-    - call_endpoint_b
+    - schedule_call_endpoint_a
+    - schedule_call_endpoint_b
 EOF
 )
 
@@ -284,6 +289,44 @@ EOF
     kill "$pids"
 }
 
+test_event_queue_does_not_block() {
+    echo "test_command"
+    local file="/tmp/_test_write_no_block"
+    local data="`rustc --version`
+"
+    local config=$(cat <<EOF
+events:
+    run_command:
+        execute:
+            command: sleep
+            args: ["3"]
+        data: run_commnad
+        next_event: write_to_file
+    print_out:
+        print: stdout
+        data: print_out
+        next_event: write_to_file
+    write_to_file:
+        file_write:
+            file: $file
+            mode: append
+start_with:
+    - run_command
+    - print_out
+EOF
+)
+
+    local pids=()
+
+    rm "$file" || true
+
+    $BIN <(echo -n "$config") & pids+=($!)
+    sleep 1
+    assert_file_content "$file" "print_out"
+    kill "$pids"
+}
+
+
 test() {
     cargo build
     cargo test
@@ -293,6 +336,7 @@ test() {
     test_mqtt
     test_reschedule
     test_schedule_on_crash
+    test_event_queue_does_not_block
 }
 
 "${1:-"test"}"

@@ -123,6 +123,7 @@ mod tests {
                 next_event: "test1".to_string().into(),
                 next_event_template: Default::default(),
                 data: Data::Json(json!({"file_create": "data"})),
+                ignore_data: false,
             },
             ReferencingEvent {
                 name: "file_write".to_string(),
@@ -130,6 +131,7 @@ mod tests {
                 next_event: "test2".to_string().into(),
                 next_event_template: Default::default(),
                 data: Data::Json(json!({"file_write": "data"})),
+                ignore_data: false,
             },
             ReferencingEvent {
                 name: "file_delete".to_string(),
@@ -137,6 +139,7 @@ mod tests {
                 next_event: "test3".to_string().into(),
                 next_event_template: Default::default(),
                 data: Data::Json(json!({"file_delete": "data"})),
+                ignore_data: false,
             },
         ];
 
@@ -189,13 +192,14 @@ mod tests {
     fn create_time_event(name: &str, data: Value) -> ReferencingEvent {
         ReferencingEvent {
             event_type: EventType::Time(TimeEvent {
-                execute_time: None,
-                execute_period: None,
+                execute_time: "now".parse().unwrap(),
+                event_id: None,
             }),
             next_event: None,
             data: Data::Json(data),
             next_event_template: None,
             name: name.to_string(),
+            ignore_data: false,
         }
     }
 }

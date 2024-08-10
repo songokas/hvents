@@ -29,8 +29,7 @@ start_with:
 #       next_event: schedule_light_on
 
 #     schedule_light_on:
-#       time:
-#         execute_period:
+#       period:
 #           from: 23:00
 #           to: 05:00
 #       next_event: light_on

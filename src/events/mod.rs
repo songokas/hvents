@@ -8,15 +8,18 @@ pub mod file_watch;
 pub mod file_write;
 pub mod mqtt_publish;
 pub mod mqtt_subscribe;
+pub mod period;
 pub mod print;
 pub mod time;
 
 use command::CommandEvent;
 use data::Data;
 use indexmap::{IndexMap, IndexSet};
+use period::PeriodEvent;
 use print::PrintEvent;
-use serde::{Deserialize, Serialize};
-use std::{borrow::Borrow, hash::Hash};
+use serde::{de, Deserialize, Serialize};
+use std::{borrow::Borrow, hash::Hash, path::PathBuf};
+use time::{str_to_time, TimeResult};
 
 use api_listen::ApiListenEvent;
 use file_changed::FileChangedEvent;
@@ -33,10 +36,16 @@ use self::{api_call::ApiCallEvent, time::TimeEvent};
 pub enum EventType {
     MqttPublish(MqttPublishEvent),
     MqttSubscribe(MqttSubscribeEvent),
+    #[serde(deserialize_with = "deserialize_time_event")]
     Time(TimeEvent),
+    #[serde(deserialize_with = "deserialize_time_event")]
+    Repeat(TimeEvent),
+    Period(PeriodEvent),
     ApiCall(ApiCallEvent),
     ApiListen(ApiListenEvent),
+    #[serde(deserialize_with = "deserialize_file_read_event")]
     FileRead(FileReadEvent),
+    #[serde(deserialize_with = "deserialize_file_write_event")]
     FileWrite(FileWriteEvent),
     Watch(WatchEvent),
     FileChanged(FileChangedEvent),
@@ -54,6 +63,32 @@ pub struct ReferencingEvent {
     pub next_event_template: Option<String>,
     #[serde(default)]
     pub data: Data,
+    #[serde(default)]
+    pub ignore_data: bool,
+}
+
+impl ReferencingEvent {
+    pub fn merge(&mut self, data: Data) {
+        if !self.ignore_data {
+            self.data.merge(data)
+        }
+    }
+
+    pub fn event_id(&self) -> &str {
+        if let EventType::Time(t) | EventType::Repeat(t) = &self.event_type {
+            t.event_id.as_deref().unwrap_or(&self.name)
+        } else {
+            &self.name
+        }
+    }
+
+    pub fn time_event(&self) -> Option<&TimeEvent> {
+        if let EventType::Time(t) | EventType::Repeat(t) = &self.event_type {
+            Some(t)
+        } else {
+            None
+        }
+    }
 }
 
 impl Eq for ReferencingEvent {}
@@ -86,6 +121,10 @@ impl Events {
 
     pub fn get_event_by_name(&self, name: &str) -> Option<ReferencingEvent> {
         self.0.get(name).cloned()
+    }
+
+    pub fn get_event_id(&self, name: &str) -> Option<&str> {
+        self.0.get(name).map(|e| e.event_id())
     }
 
     pub fn has_event_by_name(&self, name: &str) -> bool {
@@ -125,38 +164,63 @@ impl Events {
 pub type EventName = String;
 pub type EventMap = IndexMap<EventName, ReferencingEvent>;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TimerMessage {
-    pub executing_event: ExecutingEvent,
-    pub event_to_execute: ReferencingEvent,
-}
-
-impl Eq for TimerMessage {}
-
-impl PartialEq for TimerMessage {
-    fn eq(&self, other: &Self) -> bool {
-        self.executing_event.event_id == other.executing_event.event_id
+fn deserialize_time_event<'de, D>(deserializer: D) -> Result<TimeEvent, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    #[derive(Debug, Deserialize)]
+    #[serde(untagged)]
+    enum TimeOrFull {
+        #[serde(deserialize_with = "str_to_time")]
+        OnlyTime(TimeResult),
+        Full(TimeEvent),
+    }
+    let s: TimeOrFull = de::Deserialize::deserialize(deserializer)?;
+    match s {
+        TimeOrFull::OnlyTime(execute_time) => Ok(TimeEvent {
+            execute_time,
+            event_id: None,
+        }),
+        TimeOrFull::Full(t) => Ok(t),
     }
 }
 
-impl Hash for TimerMessage {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.executing_event.event_id.hash(state);
+fn deserialize_file_read_event<'de, D>(deserializer: D) -> Result<FileReadEvent, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    #[derive(Debug, Deserialize)]
+    #[serde(untagged)]
+    enum OneOrFull {
+        One(PathBuf),
+        Full(FileReadEvent),
+    }
+    let s: OneOrFull = de::Deserialize::deserialize(deserializer)?;
+    match s {
+        OneOrFull::One(file) => Ok(FileReadEvent {
+            file,
+            data_type: Default::default(),
+        }),
+        OneOrFull::Full(t) => Ok(t),
     }
 }
 
-impl Borrow<str> for TimerMessage {
-    fn borrow(&self) -> &str {
-        &self.executing_event.event_id
+fn deserialize_file_write_event<'de, D>(deserializer: D) -> Result<FileWriteEvent, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    #[derive(Debug, Deserialize)]
+    #[serde(untagged)]
+    enum OneOrFull {
+        One(PathBuf),
+        Full(FileWriteEvent),
     }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExecutingEvent {
-    pub event_id: EventName,
-    pub time_event: TimeEvent,
-    pub name: EventName,
-    pub next_event: Option<EventName>,
-    pub next_event_template: Option<String>,
-    pub data: Data,
+    let s: OneOrFull = de::Deserialize::deserialize(deserializer)?;
+    match s {
+        OneOrFull::One(file) => Ok(FileWriteEvent {
+            file,
+            mode: Default::default(),
+        }),
+        OneOrFull::Full(t) => Ok(t),
+    }
 }

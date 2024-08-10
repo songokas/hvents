@@ -19,6 +19,7 @@ pub struct Config {
     pub event_files: Vec<PathBuf>,
     #[serde(default)]
     pub events: EventMap,
+    /// restore events from uri specified
     pub restore: Option<String>,
     pub location: Option<Location>,
     #[serde(default)]

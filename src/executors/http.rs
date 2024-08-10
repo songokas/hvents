@@ -277,13 +277,14 @@ mod tests {
     fn create_time_event(name: &str, data: Value) -> ReferencingEvent {
         ReferencingEvent {
             event_type: EventType::Time(TimeEvent {
-                execute_time: None,
-                execute_period: None,
+                execute_time: "now".parse().unwrap(),
+                event_id: None,
             }),
             next_event: None,
             data: Data::Json(data),
             next_event_template: None,
             name: name.to_string(),
+            ignore_data: false,
         }
     }
 
@@ -310,6 +311,7 @@ mod tests {
             data: Data::Json(data),
             next_event_template: None,
             name: name.to_string(),
+            ignore_data: false,
         }
     }
 }

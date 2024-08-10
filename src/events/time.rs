@@ -12,66 +12,28 @@ pub const EXECUTION_PERIOD: Duration = Duration::from_millis(1000);
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TimeEvent {
-    pub execute_period: Option<ExecutionPeriod>,
-    #[serde(default)]
-    #[serde(deserialize_with = "str_to_time_optional")]
-    pub execute_time: Option<TimeResult>,
+    #[serde(deserialize_with = "str_to_time")]
+    pub execute_time: TimeResult,
+
+    /// same event id can be used to overwrite a previous time event
+    pub event_id: Option<String>,
 }
 
 impl TimeEvent {
     pub fn matches(&self, now: DateTime<Local>) -> bool {
-        match &self.execute_time {
-            Some(t) => t.within_execution_period(now),
-            None => true,
-        }
-    }
-
-    pub fn can_execute(&self, now: DateTime<Local>) -> bool {
-        match &self.execute_period {
-            Some(t) => t.matches(now),
-            None => true,
-        }
+        self.execute_time.within_execution_period(now)
     }
 
     pub fn expired(&self, now: DateTime<Local>) -> bool {
         match &self.execute_time {
-            Some(TimeResult::Time(_)) => false,
-            Some(t) => t.lt(now - EXECUTION_PERIOD),
-            None => true,
+            TimeResult::Time(_) => false,
+            t => t.lt(now - EXECUTION_PERIOD),
         }
     }
 
     pub fn reset(mut self) -> Self {
-        if let Some(p) = self.execute_period {
-            self.execute_period = ExecutionPeriod {
-                from: p.from.reset(),
-                to: p.to.reset(),
-            }
-            .into();
-        }
-        if let Some(p) = self.execute_time {
-            self.execute_time = p.reset().into();
-        }
+        self.execute_time = self.execute_time.reset();
         self
-    }
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ExecutionPeriod {
-    #[serde(deserialize_with = "str_to_time")]
-    pub from: TimeResult,
-    #[serde(deserialize_with = "str_to_time")]
-    pub to: TimeResult,
-}
-
-impl ExecutionPeriod {
-    pub fn matches(&self, now: DateTime<Local>) -> bool {
-        // for time when its less than from
-        if matches!((&self.from, &self.to), (TimeResult::Time(f), TimeResult::Time(t)) if f > t) {
-            self.from.lte(now) || self.to.gt(now)
-        } else {
-            self.from.lte(now) && self.to.gt(now)
-        }
     }
 }
 
@@ -265,7 +227,7 @@ impl Display for TimeResult {
     }
 }
 
-fn str_to_time<'de, D>(deserializer: D) -> Result<TimeResult, D::Error>
+pub fn str_to_time<'de, D>(deserializer: D) -> Result<TimeResult, D::Error>
 where
     D: de::Deserializer<'de>,
 {
@@ -282,27 +244,6 @@ where
     }
 }
 
-fn str_to_time_optional<'de, D>(deserializer: D) -> Result<Option<TimeResult>, D::Error>
-where
-    D: de::Deserializer<'de>,
-{
-    #[derive(Debug, Deserialize)]
-    #[serde(untagged)]
-    enum StringOrTime {
-        String(String),
-        Time(TimeResult),
-    }
-    let s: Option<StringOrTime> = de::Deserialize::deserialize(deserializer)?;
-    match s {
-        Some(StringOrTime::String(s)) => s
-            .parse::<TimeResult>()
-            .map(Into::into)
-            .map_err(de::Error::custom),
-        Some(StringOrTime::Time(t)) => Ok(t.into()),
-        None => Ok(None),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use chrono::{Days, Duration, Local, NaiveDate, Timelike};
@@ -310,82 +251,6 @@ mod tests {
     use crate::config::{init_location, now};
 
     use super::*;
-
-    #[test]
-    fn test_execution_within_period_from_json() {
-        let data = [
-            ("a second ago", "in 2 minutes", now(), true),
-            ("a second ago", "in 2 hours", now(), true),
-            ("today", "tomorrow", now(), true),
-            (
-                "22:00",
-                "23:00",
-                now()
-                    .with_time(NaiveTime::from_hms_opt(22, 0, 0).unwrap())
-                    .unwrap(),
-                true,
-            ),
-            (
-                "22:00",
-                "23:00",
-                now()
-                    .with_time(NaiveTime::from_hms_opt(22, 59, 59).unwrap())
-                    .unwrap(),
-                true,
-            ),
-            (
-                "22:00",
-                "3:00",
-                now()
-                    .with_time(NaiveTime::from_hms_opt(22, 0, 0).unwrap())
-                    .unwrap(),
-                true,
-            ),
-            (
-                "22:00",
-                "3:00",
-                now()
-                    .with_time(NaiveTime::from_hms_opt(2, 59, 59).unwrap())
-                    .unwrap(),
-                true,
-            ),
-            (
-                "22:00",
-                "3:00",
-                now()
-                    .with_time(NaiveTime::from_hms_opt(3, 0, 0).unwrap())
-                    .unwrap(),
-                false,
-            ),
-            (
-                "22:00",
-                "3:00",
-                now()
-                    .with_time(NaiveTime::from_hms_opt(21, 59, 59).unwrap())
-                    .unwrap(),
-                false,
-            ),
-            (
-                "22:00",
-                "3:00",
-                now()
-                    .with_time(NaiveTime::from_hms_opt(17, 0, 0).unwrap())
-                    .unwrap(),
-                false,
-            ),
-        ];
-        for (from, to, now, expected) in data {
-            let time_event: TimeEvent = serde_json::from_str(&format!(
-                r#"{{"execute_period":{{"from":"{from}", "to":"{to}"}}}}"#
-            ))
-            .unwrap();
-            assert_eq!(
-                time_event.can_execute(now),
-                expected,
-                "{from} {to} {time_event:?} {now}"
-            );
-        }
-    }
 
     #[test]
     fn test_execution_time_from_json() {
@@ -634,8 +499,8 @@ mod tests {
     fn test_serialize_deserialize_time_event() {
         let now = now();
         let time = TimeEvent {
-            execute_time: TimeResult::DateTime((now, "tomorrow 12:00".to_string())).into(),
-            execute_period: None,
+            execute_time: TimeResult::DateTime((now, "tomorrow 12:00".to_string())),
+            event_id: None,
         };
         let s = serde_json::to_string(&time).unwrap();
         let result: TimeEvent = serde_json::from_str(&s).unwrap();

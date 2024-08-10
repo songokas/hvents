@@ -128,6 +128,7 @@ mod tests {
             next_event: event,
             data: Default::default(),
             next_event_template: Default::default(),
+            ignore_data: false,
         }
     }
 }
