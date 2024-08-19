@@ -55,7 +55,7 @@ mod tests {
         event.write(&data).unwrap();
         let json = r#"{"file":"/tmp/_test_write_truncate"}"#;
         let event: FileReadEvent = serde_json::from_str(json).unwrap();
-        let content = event.read().unwrap();
+        let (content, _) = event.read().unwrap();
         assert_eq!(data, content);
     }
 
@@ -70,7 +70,7 @@ mod tests {
         event.write(&data).unwrap();
         let json = r#"{"file":"/tmp/_test_write_append"}"#;
         let event: FileReadEvent = serde_json::from_str(json).unwrap();
-        let content = event.read().unwrap();
+        let (content, _) = event.read().unwrap();
         let expected = Data::String("hellohello".to_string());
         assert_eq!(expected, content);
     }

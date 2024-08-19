@@ -94,7 +94,7 @@ events:
     subscribe:
         mqtt_subscribe:
             topic: test/people-names/#
-            contains_string: Hi
+            body_contains: Hi
         next_event: write_to_file
     publish_peter:
         mqtt_publish:
@@ -268,7 +268,9 @@ events:
     run_command:
         execute:
             command: rustc
-            args: [--version]
+            args: ["to_be_replaced"]
+            replace_args:
+                0: --version
         next_event: write_to_file
     write_to_file:
         file_write:

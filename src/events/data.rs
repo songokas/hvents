@@ -1,13 +1,14 @@
 use core::str::from_utf8;
 use std::{borrow::Cow, io::Read};
 
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum Data {
     String(String),
+    #[serde(deserialize_with = "any_value")]
     Json(Value),
     Bytes(Vec<u8>),
     #[default]
@@ -111,6 +112,21 @@ pub enum DataType {
     Json,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct Metadata(Value);
+
+impl Metadata {
+    pub fn merge(&mut self, metadata: Metadata) {
+        merge_json_value_recursive(&mut self.0, metadata.0)
+    }
+}
+
+impl From<Value> for Metadata {
+    fn from(value: Value) -> Self {
+        Metadata(value)
+    }
+}
+
 fn merge_json_value_recursive(a: &mut Value, b: Value) {
     if let Value::Object(a) = a {
         if let Value::Object(b) = b {
@@ -126,6 +142,23 @@ fn merge_json_value_recursive(a: &mut Value, b: Value) {
         }
     }
     *a = b;
+}
+
+pub fn any_value<'de, D>(deserializer: D) -> Result<Value, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    #[derive(Debug, Deserialize)]
+    #[serde(untagged)]
+    enum AnyValue {
+        Json(Value),
+        Yaml(serde_yaml::Value),
+    }
+    let s: AnyValue = de::Deserialize::deserialize(deserializer)?;
+    match s {
+        AnyValue::Json(t) => Ok(t),
+        AnyValue::Yaml(t) => serde_json::to_value(t).map_err(de::Error::custom),
+    }
 }
 
 #[cfg(test)]

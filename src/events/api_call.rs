@@ -9,13 +9,13 @@ use reqwest::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::config::PoolId;
+use crate::{config::PoolId, events::data::Metadata};
 
 use super::data::Data;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApiCallEvent {
-    url: String,
+    pub url: String,
     #[serde(default)]
     headers: HashMap<String, String>,
     #[serde(default)]
@@ -29,7 +29,11 @@ pub struct ApiCallEvent {
 }
 
 impl ApiCallEvent {
-    pub fn call_api(&self, client: &Client, data: &Data) -> Result<Data, anyhow::Error> {
+    pub fn call_api(
+        &self,
+        client: &Client,
+        data: &Data,
+    ) -> Result<(Data, Metadata), anyhow::Error> {
         let mut headers: HeaderMap = (&self.headers)
             .try_into()
             .map_err(|e| anyhow!("Invalid header specified: {e}"))?;
@@ -55,11 +59,12 @@ impl ApiCallEvent {
             RequestMethod::Get => client.get(&self.url).headers(headers).send()?.bytes()?,
         };
         debug!("Response from {} bytes {response:?}", self.url);
-        Ok(match &self.response_content {
+        let data = match &self.response_content {
             ResponseContent::Json => Data::Json(serde_json::from_slice(&response)?),
             ResponseContent::Text => Data::String(String::from_utf8_lossy(&response).to_string()),
             ResponseContent::Bytes => Data::Bytes(response.to_vec()),
-        })
+        };
+        Ok((data, Metadata::default()))
     }
 }
 

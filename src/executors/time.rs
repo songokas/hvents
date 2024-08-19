@@ -31,7 +31,7 @@ pub fn timed_executor<'a>(
             debug!(
                 "Schedule time event with id={event_id} event={} next_event={} execute_time={}",
                 time_event.name,
-                time_event.next_event.as_deref().unwrap_or("none"),
+                time_event.next_event.as_deref().unwrap_or("unknown"),
                 time_event
                     .time_event()
                     .map(|t| t.execute_time.to_string())
@@ -46,10 +46,7 @@ pub fn timed_executor<'a>(
             .filter_map(|(event_id, event)| {
                 if !delay_events.contains_key(event.event_id()) && event.time_event()?.matches(now)
                 {
-                    Some((
-                        *event_id,
-                        events.get_event_by_name(event.next_event.as_deref()?)?,
-                    ))
+                    Some((*event_id, events.get_next_event(event)?))
                 } else {
                     None
                 }
@@ -67,18 +64,8 @@ pub fn timed_executor<'a>(
             queue_tx.send(next_event)?;
 
             if let EventType::Repeat(_) = &current_event.event_type {
-                // let reschedule_event = e.reset();
-                // if !reschedule_event.expired(now + COOL_DOWN_DURATION) {
-                //     current_event.event_type = EventType::Time(reschedule_event);
                 debug!("Requeue same event={}", current_event.name);
                 queue_tx.send(current_event)?;
-                // } else {
-                //     debug!(
-                //         "Ignoring requeue event={} since its expired {}",
-                //         current_event.name,
-                //         reschedule_event.execute_time.to_string()
-                //     );
-                // }
             }
 
             database.remove(event_id);
@@ -112,7 +99,7 @@ mod tests {
         database::Store,
         events::{
             time::{TimeEvent, TimeResult},
-            EventType,
+            EventType, NextEvent,
         },
     };
 
@@ -290,10 +277,9 @@ mod tests {
                 )),
                 event_id,
             }),
-            next_event,
-            next_event_template: None,
+            next_event: next_event.map(NextEvent::NextEvent),
             data: crate::events::data::Data::Json(data),
-            ignore_data: false,
+            ..ReferencingEvent::default()
         }
     }
 
@@ -313,10 +299,9 @@ mod tests {
                 )),
                 event_id,
             }),
-            next_event,
-            next_event_template: None,
+            next_event: next_event.map(NextEvent::NextEvent),
             data: crate::events::data::Data::Json(data),
-            ignore_data: false,
+            ..ReferencingEvent::default()
         }
     }
 }

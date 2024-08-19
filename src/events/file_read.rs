@@ -2,7 +2,7 @@ use std::{fs::File, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use super::data::{Data, DataType};
+use super::data::{Data, DataType, Metadata};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileReadEvent {
@@ -12,8 +12,8 @@ pub struct FileReadEvent {
 }
 
 impl FileReadEvent {
-    pub fn read(&self) -> Result<Data, anyhow::Error> {
+    pub fn read(&self) -> Result<(Data, Metadata), anyhow::Error> {
         let h = File::open(&self.file)?;
-        Data::from_reader(h, self.data_type)
+        Ok((Data::from_reader(h, self.data_type)?, Metadata::default()))
     }
 }

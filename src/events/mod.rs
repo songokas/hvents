@@ -8,13 +8,16 @@ pub mod file_watch;
 pub mod file_write;
 pub mod mqtt_publish;
 pub mod mqtt_subscribe;
+pub mod mqtt_unsubscribe;
 pub mod period;
 pub mod print;
 pub mod time;
 
 use command::CommandEvent;
-use data::Data;
+use core::ops::Deref;
+use data::{Data, Metadata};
 use indexmap::{IndexMap, IndexSet};
+use mqtt_unsubscribe::MqttUnsubscribeEvent;
 use period::PeriodEvent;
 use print::PrintEvent;
 use serde::{de, Deserialize, Serialize};
@@ -31,11 +34,12 @@ use mqtt_subscribe::MqttSubscribeEvent;
 
 use self::{api_call::ApiCallEvent, time::TimeEvent};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum EventType {
     MqttPublish(MqttPublishEvent),
     MqttSubscribe(MqttSubscribeEvent),
+    MqttUnsubscribe(MqttUnsubscribeEvent),
     #[serde(deserialize_with = "deserialize_time_event")]
     Time(TimeEvent),
     #[serde(deserialize_with = "deserialize_time_event")]
@@ -51,26 +55,82 @@ pub enum EventType {
     FileChanged(FileChangedEvent),
     Execute(CommandEvent),
     Print(PrintEvent),
+    #[default]
+    Pass,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct ReferencingEvent {
     #[serde(default)]
     pub name: EventName,
     #[serde(flatten)]
+    #[serde(deserialize_with = "deserialize_event_type")]
     pub event_type: EventType,
-    pub next_event: Option<EventName>,
-    pub next_event_template: Option<String>,
+    #[serde(flatten)]
+    pub next_event: Option<NextEvent>,
+    #[serde(default)]
+    pub metadata: Metadata,
+    pub state: Option<StateData>,
     #[serde(default)]
     pub data: Data,
     #[serde(default)]
-    pub ignore_data: bool,
+    pub merge_data: MergePolicy,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StateData {
+    pub count: Option<String>,
+    #[serde(default)]
+    pub replace: IndexMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NextEvent {
+    NextEvent(EventName),
+    NextEventTemplate(String),
+}
+
+impl Deref for NextEvent {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            NextEvent::NextEvent(s) => s.deref(),
+            NextEvent::NextEventTemplate(_) => "unknown",
+        }
+    }
+}
+
+impl From<&'static str> for NextEvent {
+    fn from(value: &'static str) -> Self {
+        Self::NextEvent(value.to_string())
+    }
+}
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MergePolicy {
+    #[default]
+    Yes,
+    No,
+    Overwrite,
 }
 
 impl ReferencingEvent {
     pub fn merge(&mut self, data: Data) {
-        if !self.ignore_data {
-            self.data.merge(data)
+        match self.merge_data {
+            MergePolicy::Yes => self.data.merge(data),
+            MergePolicy::No => (),
+            MergePolicy::Overwrite => self.data = data,
+        }
+    }
+
+    pub fn try_merge_bytes(&mut self, bytes: &[u8]) {
+        match self.merge_data {
+            MergePolicy::Yes => self.data.try_merge_bytes(bytes),
+            MergePolicy::No => (),
+            MergePolicy::Overwrite => self.data = Data::Bytes(bytes.to_vec()),
         }
     }
 
@@ -123,6 +183,21 @@ impl Events {
         self.0.get(name).cloned()
     }
 
+    pub fn get_next_event(&self, event: &ReferencingEvent) -> Option<ReferencingEvent> {
+        // generate a new pass event since next event is unknown and only event executor
+        // knows how to handle it
+        match &event.next_event {
+            Some(NextEvent::NextEventTemplate(s)) => ReferencingEvent {
+                name: format!("generated_from_{}", event.name),
+                next_event: NextEvent::NextEventTemplate(s.clone()).into(),
+                ..Default::default()
+            }
+            .into(),
+            Some(NextEvent::NextEvent(s)) => self.0.get(s.as_str()).cloned(),
+            None => None,
+        }
+    }
+
     pub fn get_event_id(&self, name: &str) -> Option<&str> {
         self.0.get(name).map(|e| e.event_id())
     }
@@ -138,7 +213,9 @@ impl Events {
     pub fn merge_with_prefix(mut self, events: EventMap, prefix: &str) -> Self {
         self.0.extend(events.into_iter().map(|(name, mut event)| {
             event.name = format!("{prefix}_{name}");
-            event.next_event = event.next_event.map(|name| format!("{prefix}_{name}"));
+            if let Some(NextEvent::NextEvent(name)) = event.next_event {
+                event.next_event = NextEvent::NextEvent(format!("{prefix}_{name}")).into()
+            }
             event
         }));
         self
@@ -223,4 +300,15 @@ where
         }),
         OneOrFull::Full(t) => Ok(t),
     }
+}
+
+fn deserialize_event_type<'de, D>(deserializer: D) -> Result<EventType, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    let s: Option<EventType> = de::Deserialize::deserialize(deserializer)?;
+    Ok(match s {
+        Some(e) => e,
+        None => EventType::Pass,
+    })
 }
