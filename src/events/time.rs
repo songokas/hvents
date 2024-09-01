@@ -13,7 +13,7 @@ pub const EXECUTION_PERIOD: Duration = Duration::from_millis(1000);
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TimeEvent {
     #[serde(deserialize_with = "str_to_time")]
-    pub execute_time: TimeResult,
+    pub execute_time: ExecuteTime,
 
     /// same event id can be used to overwrite a previous time event
     pub event_id: Option<String>,
@@ -26,7 +26,7 @@ impl TimeEvent {
 
     pub fn expired(&self, now: DateTime<Local>) -> bool {
         match &self.execute_time {
-            TimeResult::Time(_) => false,
+            ExecuteTime::Time(_) => false,
             t => t.lt(now - EXECUTION_PERIOD),
         }
     }
@@ -39,14 +39,14 @@ impl TimeEvent {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum TimeResult {
+pub enum ExecuteTime {
     // datetime and date can change depending on the supplied value
     DateTime((DateTime<Local>, String)),
     Date((NaiveDateTime, String)),
     Time((NaiveTime, String)),
 }
 
-impl TimeResult {
+impl ExecuteTime {
     pub fn gte(&self, now: DateTime<Local>) -> bool {
         match self {
             Self::DateTime((d, _)) => *d >= now,
@@ -110,7 +110,7 @@ impl TimeResult {
     }
 }
 
-impl FromStr for TimeResult {
+impl FromStr for ExecuteTime {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -127,15 +127,15 @@ impl FromStr for TimeResult {
 
         Ok(match from_human_time(s)? {
             ParseResult::Date(d) => {
-                TimeResult::Date((NaiveDateTime::new(d, NaiveTime::default()), s.to_string()))
+                ExecuteTime::Date((NaiveDateTime::new(d, NaiveTime::default()), s.to_string()))
             }
-            ParseResult::Time(d) => TimeResult::Time((d, s.to_string())),
-            ParseResult::DateTime(d) => TimeResult::DateTime((d, s.to_string())),
+            ParseResult::Time(d) => ExecuteTime::Time((d, s.to_string())),
+            ParseResult::DateTime(d) => ExecuteTime::DateTime((d, s.to_string())),
         })
     }
 }
 
-fn parse_sunrise_sunset(s: &str, lat: f64, long: f64) -> Result<TimeResult, ParseError> {
+fn parse_sunrise_sunset(s: &str, lat: f64, long: f64) -> Result<ExecuteTime, ParseError> {
     let invalid_value = || ParseError::ValueInvalid {
         amount: s.to_string(),
     };
@@ -178,7 +178,7 @@ fn parse_sunrise_sunset(s: &str, lat: f64, long: f64) -> Result<TimeResult, Pars
             } else {
                 return Err(invalid_value());
             };
-            TimeResult::Date((dt.naive_local(), s.to_string()))
+            ExecuteTime::Date((dt.naive_local(), s.to_string()))
         }
         ParseResult::Time(_) => return Err(invalid_value()),
         ParseResult::DateTime(d) => {
@@ -212,12 +212,12 @@ fn parse_sunrise_sunset(s: &str, lat: f64, long: f64) -> Result<TimeResult, Pars
                 sun_dt - time_diff
             };
 
-            TimeResult::DateTime((dt, s.to_string()))
+            ExecuteTime::DateTime((dt, s.to_string()))
         }
     })
 }
 
-impl Display for TimeResult {
+impl Display for ExecuteTime {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::DateTime((d, _)) => write!(f, "{}", d.naive_local()),
@@ -227,7 +227,7 @@ impl Display for TimeResult {
     }
 }
 
-pub fn str_to_time<'de, D>(deserializer: D) -> Result<TimeResult, D::Error>
+pub fn str_to_time<'de, D>(deserializer: D) -> Result<ExecuteTime, D::Error>
 where
     D: de::Deserializer<'de>,
 {
@@ -235,7 +235,7 @@ where
     #[serde(untagged)]
     enum StringOrTime {
         String(String),
-        Time(TimeResult),
+        Time(ExecuteTime),
     }
     let s: StringOrTime = de::Deserialize::deserialize(deserializer)?;
     match s {
@@ -350,7 +350,7 @@ mod tests {
     fn test_time_result_matches() {
         let now = now();
         let in_few_seconds = now + Duration::seconds(2);
-        let time = TimeResult::Time((
+        let time = ExecuteTime::Time((
             now.naive_local().time(),
             now.naive_local().time().to_string(),
         ));
@@ -376,7 +376,7 @@ mod tests {
             .unwrap()
             .with_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap())
             .unwrap();
-        let time = TimeResult::Date((now.naive_local(), "tomorrow".to_string()));
+        let time = ExecuteTime::Date((now.naive_local(), "tomorrow".to_string()));
         assert!(time.gte(now));
         assert!(time.within_execution_period(now));
         assert!(time.lt(now.checked_add_days(Days::new(1)).unwrap()));
@@ -399,7 +399,7 @@ mod tests {
             .unwrap()
             .with_time(NaiveTime::from_hms_opt(12, 0, 0).unwrap())
             .unwrap();
-        let time = TimeResult::DateTime((now, "tomorrow 12:00".to_string()));
+        let time = ExecuteTime::DateTime((now, "tomorrow 12:00".to_string()));
 
         assert!(time.gte(now));
         assert!(time.within_execution_period(now));
@@ -482,7 +482,7 @@ mod tests {
             // ),
         ];
         for (time, now) in data {
-            let time_result = time.parse::<TimeResult>();
+            let time_result = time.parse::<ExecuteTime>();
             if let Some(now) = now {
                 let time_result = time_result.unwrap();
                 assert!(
@@ -499,7 +499,7 @@ mod tests {
     fn test_serialize_deserialize_time_event() {
         let now = now();
         let time = TimeEvent {
-            execute_time: TimeResult::DateTime((now, "tomorrow 12:00".to_string())),
+            execute_time: ExecuteTime::DateTime((now, "tomorrow 12:00".to_string())),
             event_id: None,
         };
         let s = serde_json::to_string(&time).unwrap();

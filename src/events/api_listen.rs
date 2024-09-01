@@ -12,12 +12,12 @@ use super::{
 
 pub type HttpQueue = Arc<Mutex<IndexSet<ReferencingEvent>>>;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ApiListenEvent {
     pub path: String,
     #[serde(default)]
     pub headers: Headers,
-    pub template: Option<String>,
+    pub response_body: Option<String>,
     #[serde(default)]
     pub method: RequestMethod,
     #[serde(default)]
@@ -97,7 +97,7 @@ mod tests {
         ApiListenEvent {
             path: uri.to_string(),
             headers: Default::default(),
-            template: Default::default(),
+            response_body: Default::default(),
             method: request_method,
             request_content: Default::default(),
             response_content: Default::default(),

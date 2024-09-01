@@ -4,7 +4,7 @@ use env_logger::Env;
 use hvents::config::{init_location, ClientConfiguration, Config, PoolId};
 use hvents::database::{self, KeyValueStore};
 use hvents::events::api_listen::HttpQueue;
-use hvents::events::{EventMap, EventName, EventType, Events, ReferencingEvent};
+use hvents::events::{EventMap, EventName, EventType, Events, NextEvent, ReferencingEvent};
 use hvents::executors::file::file_changed_executor;
 use hvents::executors::http::http_executor;
 use hvents::executors::mqtt::mqtt_executor;
@@ -166,7 +166,7 @@ fn validate_events(
     }
     // validate references
     for event in events.iter() {
-        let Some(name) = &event.next_event else {
+        let Some(NextEvent::Name(name)) = &event.next_event else {
             continue;
         };
         if !events.has_event_by_name(name) {

@@ -15,8 +15,8 @@ Supports:
 ## Install deb
 
 ```
-wget https://github.com/songokas/hvents/releases/download/v0.2.0/hvents_0.2.0_amd64.deb \
-  && sudo apt install ./hvents_0.2.0_amd64.deb
+wget https://github.com/songokas/hvents/releases/download/v0.3.0/hvents_0.3.0_amd64.deb \
+  && sudo apt install ./hvents_0.3.0_amd64.deb
 ```
 
 ## Download binary
@@ -85,7 +85,7 @@ events:
     light_on:
         mqtt_publish:
             topic: cmnd/hall/Power
-            template: on
+            body: on
 
 # specify which events to start with
 start_with:
@@ -138,10 +138,16 @@ systemctl start hvents
 
 ### Publish to mqtt topic
 
+Publish to topic with body from even.data
+
+```yaml
+  mqtt_publish: announce/back-door
+```
+
 ```yaml
   mqtt_publish:
     topic: announce/back-door
-    template: back door open # optional event.data will be used if template is not defined
+    body: back door open # optional event.data will be used if template is not defined
     pool_id: default # optional client to use for publishing events
 ```
 
@@ -150,10 +156,15 @@ Publish event can use handlebar templates to define a body as well
 ```yaml
   mqtt_publish:
     topic: announce/weather
-    template: '{{#each forecastTimestamps}}{{#if (eq forecastTimeUtc (date-time-format ../forecastToShow "%Y-%m-%d %H:%M:%S"))}}Air temperature {{airTemperature}} degrees{{/if}}{{/each}}'
+    body: '{{#each forecastTimestamps}}{{#if (eq forecastTimeUtc (date-time-format ../forecastToShow "%Y-%m-%d %H:%M:%S"))}}Air temperature {{airTemperature}} degrees{{/if}}{{/each}}'
 ```
 
 ### Subscribe to mqtt topic
+
+
+```yaml
+  mqtt_subscribe: security/back-door/open
+```
 
 Mqtt request body must match exactly
 
@@ -169,7 +180,7 @@ Mqtt request body must contain a string to match
 ```yaml
   mqtt_subscribe:
     topic: security/back-door/open
-    string_contains: "special string"
+    body_contains: "special string"
 ```
 
 ### Read from file
@@ -204,6 +215,10 @@ File will be written with data provided by the previous event or event.data defi
 ### Call API endpoint
 
 ```yaml
+    api_call: https://api.meteo.lt/v1/places/vilnius/forecasts/long-term
+```
+
+```yaml
     api_call: 
         url: https://api.meteo.lt/v1/places/vilnius/forecasts/long-term
         # optional
@@ -221,7 +236,7 @@ File will be written with data provided by the previous event or event.data defi
 
  Listen for an http call
 
- event.data or template can be used to control what to return as a response
+ event.data or response_body can be used to control what to return as a response
 
 ```yaml
     api_listen:
@@ -232,9 +247,17 @@ File will be written with data provided by the previous event or event.data defi
         request_content: json # optional
         # options: json,text,bytes
         response_content: json # optional
-        template: "{{client_id}}" # optional
+        # response template to be rendered 
+        response_body: "{{client_id}}" #optional
         pool_id: default # optional references which http server handles the request
 ```
+
+Keys available in a response body template:
+
+- request
+- url
+- segments (http request url split by /)
+- data
 
 ### File changes
 
@@ -251,8 +274,6 @@ File will be written with data provided by the previous event or event.data defi
 ```
 
 ### Schedule at specific time
-
-
 
 Execute event at 8:00:00
 
@@ -298,6 +319,38 @@ Allow event execution only at specific times
     to: 10:00
 ```
 
+### Execute command
+
+Execute external command
+
+Command takes input from the previous event data
+
+```yaml
+  execute:
+    command: date
+    # optional
+    args: ["--utc"]
+    # render template and replace arguments by index
+    # optional
+    replace_args:
+        0: "--local"
+    # options: string,json,bytes
+    # optional
+    data_type: string
+    # provide environment variables
+    # optional
+    vars:
+        ENV_VARIABLE_KEY: value 
+```
+
+## Template data
+
+Unless otherwise stated per command keys available in templates
+
+- data
+- metadata
+- state
+
 ## Event references and data
 
 Each event can reference next event and define data, which is merged together
@@ -309,7 +362,7 @@ example:
 subscribe:
   mqtt_subsribe:
     topic: weather/data
-    string_contains: "forecast"
+    body_contains: "forecast"
   next_event: schedule_writing
 schedule_writing:
   time: 8:00
@@ -351,13 +404,13 @@ schedule_light_off:
 light_on:
   mqtt_publish:
     topic: cmnd/hall/Power
-    template: on
+    body: on
   next_event: schedule_light_off
 
 light_off:
   mqtt_publish:
     topic: cmnd/hall/Power
-    template: off
+    body: off
 ```
 
 ```yaml
@@ -383,7 +436,7 @@ announce_from_file:
 announce:
   mqtt_publish:
     topic: announce/weather
-    template: '{{#each forecastTimestamps}}{{#if (eq forecastTimeUtc (date-time-format ../forecastToShow "%Y-%m-%d %H:%M:%S"))}}Air temperature {{airTemperature}} degrees{{/if}}{{/each}}'
+    body: '{{#each forecastTimestamps}}{{#if (eq forecastTimeUtc (date-time-format ../forecastToShow "%Y-%m-%d %H:%M:%S"))}}Air temperature {{airTemperature}} degrees{{/if}}{{/each}}'
 ```
 
 ```yaml

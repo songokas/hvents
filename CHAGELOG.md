@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2024-09-01
+
+### Added
+
+- state field for all events to manipulate data between events
+- metadata field for all events to return additional information
+- merge policy to control when data should be merged
+- command event can replace arguments with the template data
+
+### Changed
+
+- reduce amount of required fields for yaml definitions
+- renamed mqtt_publish.template to mqtt_publish.body
+- renamed api_listen.template to api_listen.response_body
+
+### Fixed
+
+- prevent self referencing events
+- event.data can be in yaml
+
 ## [0.2.0] - 2024-08-10
 
 ### Added

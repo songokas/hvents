@@ -1,13 +1,16 @@
 use core::str::from_utf8;
 use std::{borrow::Cow, io::Read};
 
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Serialize};
 use serde_json::Value;
+
+use super::MergePolicy;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum Data {
     String(String),
+    #[serde(deserialize_with = "any_value")]
     Json(Value),
     Bytes(Vec<u8>),
     #[default]
@@ -81,6 +84,14 @@ impl Data {
         }
     }
 
+    pub fn merge_with_policy(&mut self, data: Data, merge_data: MergePolicy) {
+        match merge_data {
+            MergePolicy::Yes => self.merge(data),
+            MergePolicy::No => (),
+            MergePolicy::Overwrite => *self = data,
+        };
+    }
+
     pub fn try_merge_bytes(&mut self, bytes: &[u8]) {
         let data: Data = if let Ok(v) = serde_json::from_slice(bytes) {
             Data::Json(v)
@@ -111,6 +122,21 @@ pub enum DataType {
     Json,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct Metadata(Value);
+
+impl Metadata {
+    pub fn merge(&mut self, metadata: Metadata) {
+        merge_json_value_recursive(&mut self.0, metadata.0)
+    }
+}
+
+impl From<Value> for Metadata {
+    fn from(value: Value) -> Self {
+        Metadata(value)
+    }
+}
+
 fn merge_json_value_recursive(a: &mut Value, b: Value) {
     if let Value::Object(a) = a {
         if let Value::Object(b) = b {
@@ -126,6 +152,23 @@ fn merge_json_value_recursive(a: &mut Value, b: Value) {
         }
     }
     *a = b;
+}
+
+pub fn any_value<'de, D>(deserializer: D) -> Result<Value, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    #[derive(Debug, Deserialize)]
+    #[serde(untagged)]
+    enum AnyValue {
+        Json(Value),
+        Yaml(serde_yaml::Value),
+    }
+    let s: AnyValue = de::Deserialize::deserialize(deserializer)?;
+    match s {
+        AnyValue::Json(t) => Ok(t),
+        AnyValue::Yaml(t) => serde_json::to_value(t).map_err(de::Error::custom),
+    }
 }
 
 #[cfg(test)]

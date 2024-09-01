@@ -3,7 +3,8 @@ use std::sync::mpsc::Sender;
 use anyhow::anyhow;
 use indexmap::IndexSet;
 use log::{debug, error, warn};
-use serde_json::Value;
+use serde::Serialize;
+use serde_json::{json, Value};
 use tiny_http::{Header, Method, Request, Response, Server};
 
 use crate::{
@@ -29,7 +30,7 @@ pub fn http_executor(
 
     for mut request in server.incoming_requests() {
         debug!(
-            "Incoming request method: {:?}, url: {:?}, headers: {:?}",
+            "Incoming request method: {}, url: {}, headers: {:?}",
             request.method(),
             request.url(),
             request.headers()
@@ -82,9 +83,9 @@ fn handle_incoming(
             })?;
 
     debug!(
-        "Http found event {} next event {:?} request content {} response content {}",
+        "Http found event={} next event={} request_content={} response_content={}",
         ref_event.name,
-        ref_event.next_event,
+        ref_event.next_event.as_deref().unwrap_or("none"),
         listen_event.request_content,
         listen_event.response_content
     );
@@ -119,16 +120,20 @@ fn handle_incoming(
     };
 
     let mut headers = listen_event.headers.clone();
+    let segments: Vec<&str> = request.url().split('/').filter(|s| !s.is_empty()).collect();
 
-    let mut data = Data::default();
-    if let Some(c) = request_content.clone() {
-        data.merge(c);
-    }
-    data.merge(ref_event.data.clone());
-
-    let template_response = if let Some(t) = &listen_event.template {
+    let template_response = if let Some(t) = &listen_event.response_body {
+        let template_data = TemplateData {
+            request: match &request_content {
+                Some(Data::Json(v)) => v.into(),
+                _ => None,
+            },
+            url: request.url(),
+            segments: segments.clone(),
+            data: &ref_event.data,
+        };
         let mut content = Vec::default();
-        if let Err(e) = handlebars.render_template_to_write(t, &data, &mut content) {
+        if let Err(e) = handlebars.render_template_to_write(t, &template_data, &mut content) {
             error!("Failed to render template {e} event={}", ref_event.name);
             return None;
         }
@@ -160,7 +165,8 @@ fn handle_incoming(
                 "OK".as_bytes().to_vec()
             }
         },
-        (ResponseContent::Text, Some(t)) => t,
+        (ResponseContent::Text, Some(t)) if !t.is_empty() => t,
+        (ResponseContent::Text, Some(_)) => return None,
         (ResponseContent::Bytes, _) => match ref_event.data.to_bytes() {
             Ok(b) => b,
             Err(e) => {
@@ -170,12 +176,15 @@ fn handle_incoming(
         },
     };
 
-    if let Some(mut event) = ref_event
-        .next_event
-        .as_ref()
-        .and_then(|e| events.get_event_by_name(e))
-    {
-        event.data.merge(data);
+    if let Some(mut event) = events.get_next_event(ref_event) {
+        if let Some(c) = request_content.clone() {
+            event.merge(c);
+        }
+        event.merge(ref_event.data.clone());
+        let mut metadata = ref_event.metadata.clone();
+        metadata.merge(json!({ref_event.name.as_str(): {"url": request.url(), "segments": segments, "remote_address": request.remote_addr()}}).into());
+        event.metadata.merge(metadata);
+
         ResponseData {
             event: event.into(),
             data: response_content,
@@ -191,6 +200,14 @@ fn handle_incoming(
         }
         .into()
     }
+}
+
+#[derive(Serialize)]
+struct TemplateData<'a> {
+    request: Option<&'a Value>,
+    url: &'a str,
+    segments: Vec<&'a str>,
+    data: &'a Data,
 }
 
 struct ResponseData {
@@ -209,6 +226,7 @@ mod tests {
         api_call::RequestMethod,
         api_listen::{ApiListenEvent, HttpQueue},
         time::TimeEvent,
+        NextEvent,
     };
 
     use super::*;
@@ -240,7 +258,7 @@ mod tests {
                 json!({ "listen2": "currently" }),
                 "/clients",
                 RequestMethod::Post,
-                r#"{{listen2}} {{time}}"#.to_string().into(),
+                r#"{{data.listen2}} {{request.time}}"#.to_string().into(),
             ));
             let events = Events::new(events.into_iter().collect());
             http_executor(queue, "127.0.0.1:13333", &events, queue_tx.clone()).unwrap();
@@ -280,11 +298,9 @@ mod tests {
                 execute_time: "now".parse().unwrap(),
                 event_id: None,
             }),
-            next_event: None,
             data: Data::Json(data),
-            next_event_template: None,
             name: name.to_string(),
-            ignore_data: false,
+            ..Default::default()
         }
     }
 
@@ -300,18 +316,17 @@ mod tests {
             event_type: EventType::ApiListen(ApiListenEvent {
                 path: uri.to_string(),
                 headers: Default::default(),
-                template,
+                response_body: template,
                 method: request_method,
                 request_content: RequestContent::Json,
                 response_content: ResponseContent::Json,
                 action: Default::default(),
                 pool_id: Default::default(),
             }),
-            next_event,
+            next_event: next_event.map(NextEvent::Name),
             data: Data::Json(data),
-            next_event_template: None,
             name: name.to_string(),
-            ignore_data: false,
+            ..Default::default()
         }
     }
 }

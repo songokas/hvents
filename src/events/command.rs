@@ -7,7 +7,7 @@ use anyhow::Result;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
-use super::data::{Data, DataType};
+use super::data::{Data, DataType, Metadata};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommandEvent {
@@ -15,13 +15,15 @@ pub struct CommandEvent {
     #[serde(default)]
     pub args: Vec<String>,
     #[serde(default)]
+    pub replace_args: IndexMap<usize, String>,
+    #[serde(default)]
     pub vars: IndexMap<String, String>,
     #[serde(default)]
     pub data_type: DataType,
 }
 
 impl CommandEvent {
-    pub fn run(&self, data: &Data) -> Result<Data> {
+    pub fn run(&self, data: &Data) -> Result<(Data, Metadata)> {
         let child = Command::new(&self.command)
             .args(&self.args)
             .envs(&self.vars)
@@ -31,7 +33,10 @@ impl CommandEvent {
 
         child.stdin.expect("stdin").write_all(&data.as_bytes()?)?;
         let reader = child.stdout.expect("stdout");
-        Data::from_reader(reader, self.data_type)
+        Ok((
+            Data::from_reader(reader, self.data_type)?,
+            Metadata::default(),
+        ))
     }
 }
 
@@ -47,11 +52,12 @@ mod tests {
             args: ["echo".to_string(), "-n".to_string()].to_vec(),
             vars: Default::default(),
             data_type: DataType::String,
+            replace_args: Default::default(),
         };
 
         let input = Data::String("hello".to_string());
 
-        let output = event.run(&input).unwrap();
+        let (output, _) = event.run(&input).unwrap();
         assert_eq!(output, Data::String("hello".to_string()));
     }
 
@@ -62,11 +68,12 @@ mod tests {
             args: ["-n".to_string(), "hello".to_string()].to_vec(),
             vars: Default::default(),
             data_type: DataType::Bytes,
+            replace_args: Default::default(),
         };
 
         let input = Data::Empty;
 
-        let output = event.run(&input).unwrap();
+        let (output, _) = event.run(&input).unwrap();
         assert_eq!(output, Data::Bytes(b"hello".to_vec()));
     }
 
@@ -79,11 +86,12 @@ mod tests {
                 "TEST1".to_string() => "defined".to_string()
             },
             data_type: DataType::String,
+            replace_args: Default::default(),
         };
 
         let input = Data::Empty;
 
-        let output = event.run(&input).unwrap();
+        let (output, _) = event.run(&input).unwrap();
         assert_eq!(output, Data::String("defined\n".to_string()));
     }
 }

@@ -43,6 +43,36 @@ EOF
 
 }
 
+test_many_events() {
+    echo "test_many_events"
+    local config=$(cat <<EOF
+events:
+    listen:
+        api_listen: /
+        next_event: call
+    call:
+        api_call: http://127.0.0.1:12333
+        next_event: in_3
+    in_3:
+        repeat: in 3 seconds
+        next_event: call
+
+http:
+    default: 127.0.0.1:12333
+start_with:
+    - listen
+EOF
+)
+
+    local pids=()
+
+    $BIN <(echo -n "$config") & pids+=($!)
+
+    curl 127.0.0.1:12333
+    sleep 10
+    kill "$pids"
+}
+
 test_schedule_on_crash() {
     echo "test_schedule_on_crash"
     local data="test_schedule_on_crash"
@@ -87,29 +117,29 @@ EOF
 
 test_mqtt() {
     echo "test_mqtt"
-    local data="Hi PeterHi DavidJohn"
+    local data="Hi PeterHi David"
     local file="/tmp/_test_write3"
     local config=$(cat <<EOF
 events:
     subscribe:
         mqtt_subscribe:
             topic: test/people-names/#
-            contains_string: Hi
+            body_contains: Hi
         next_event: write_to_file
     publish_peter:
         mqtt_publish:
             topic: test/people-names/peter
-            template: Hi Peter
+            body: Hi Peter
         next_event: publish_john
     publish_john:
-        mqtt_publish:
-            topic: test/people-names/john
+        mqtt_publish: "test/people-names/{{data}}"
         data: John
         next_event: publish_david
     publish_david:
         mqtt_publish:
             topic: test/people-names/david
         data: Hi David
+        merge_data: no
     write_to_file:
         file_write:
             file: $file
@@ -268,7 +298,9 @@ events:
     run_command:
         execute:
             command: rustc
-            args: [--version]
+            args: ["to_be_replaced"]
+            replace_args:
+                0: --version
         next_event: write_to_file
     write_to_file:
         file_write:
@@ -337,6 +369,7 @@ test() {
     test_reschedule
     test_schedule_on_crash
     test_event_queue_does_not_block
+    test_many_events
 }
 
 "${1:-"test"}"

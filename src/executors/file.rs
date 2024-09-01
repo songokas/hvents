@@ -56,16 +56,13 @@ fn handle_incoming(
         .find(|ref_event| matches!(&ref_event.event_type, EventType::FileChanged(e) if e.matches(path, watch_kind)))?;
 
     debug!(
-        "File found event {} next event {:?}",
-        change_event.name, change_event.next_event
+        "File found event {} next event {}",
+        change_event.name,
+        change_event.next_event.as_deref().unwrap_or("unknown")
     );
 
-    if let Some(mut event) = change_event
-        .next_event
-        .as_ref()
-        .and_then(|e| events.get_event_by_name(e))
-    {
-        event.data.merge(change_event.data.clone());
+    if let Some(mut event) = events.get_next_event(change_event) {
+        event.merge(change_event.data.clone());
         event.into()
     } else {
         debug!(
@@ -89,7 +86,7 @@ mod tests {
     use notify::{RecommendedWatcher, RecursiveMode, Watcher};
     use serde_json::{json, Value};
 
-    use crate::events::{data::Data, file_changed::FileChangedEvent, time::TimeEvent};
+    use crate::events::{data::Data, file_changed::FileChangedEvent, time::TimeEvent, NextEvent};
 
     use super::*;
 
@@ -120,26 +117,23 @@ mod tests {
             ReferencingEvent {
                 name: "file_create".to_string(),
                 event_type: EventType::FileChanged(event1.clone()),
-                next_event: "test1".to_string().into(),
-                next_event_template: Default::default(),
+                next_event: NextEvent::from("test1").into(),
                 data: Data::Json(json!({"file_create": "data"})),
-                ignore_data: false,
+                ..ReferencingEvent::default()
             },
             ReferencingEvent {
                 name: "file_write".to_string(),
                 event_type: EventType::FileChanged(event2.clone()),
-                next_event: "test2".to_string().into(),
-                next_event_template: Default::default(),
+                next_event: NextEvent::from("test2").into(),
                 data: Data::Json(json!({"file_write": "data"})),
-                ignore_data: false,
+                ..ReferencingEvent::default()
             },
             ReferencingEvent {
                 name: "file_delete".to_string(),
                 event_type: EventType::FileChanged(event3.clone()),
-                next_event: "test3".to_string().into(),
-                next_event_template: Default::default(),
+                next_event: NextEvent::from("test3").into(),
                 data: Data::Json(json!({"file_delete": "data"})),
-                ignore_data: false,
+                ..ReferencingEvent::default()
             },
         ];
 
@@ -195,11 +189,9 @@ mod tests {
                 execute_time: "now".parse().unwrap(),
                 event_id: None,
             }),
-            next_event: None,
             data: Data::Json(data),
-            next_event_template: None,
             name: name.to_string(),
-            ignore_data: false,
+            ..ReferencingEvent::default()
         }
     }
 }

@@ -41,7 +41,7 @@ start_with:
 #     light_on:
 #       mqtt_publish:
 #         topic: cmnd/hall/Power
-#         template: on
+#         body: on
 #       next_event: schedule_light_off
 
 #     schedule_retrieval:

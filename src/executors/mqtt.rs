@@ -2,6 +2,7 @@ use std::sync::mpsc::Sender;
 
 use log::{debug, error};
 use rumqttc::{Connection, Event, Incoming};
+use serde_json::json;
 
 use crate::events::{EventType, Events, ReferencingEvent};
 
@@ -44,16 +45,22 @@ fn handle_incoming(events: &Events, topic: &str, payload: &[u8]) -> Option<Refer
                     "Event found event {} next event {:?}",
                     ref_event.name, ref_event.next_event
                 );
-                ref_event.next_event.as_ref()
+                ref_event.into()
             }
             _ => None,
         })?;
 
-    if let Some(mut event) = events.get_event_by_name(event_associated) {
-        event.data.try_merge_bytes(payload);
+    if let Some(mut event) = events.get_next_event(event_associated) {
+        event.try_merge_bytes(payload);
+        let mut metadata = event_associated.metadata.clone();
+        metadata.merge(json!({ event_associated.name.as_str(): {"topic": topic, "segments": topic.split('/').collect::<Vec<&str>>() }}).into());
+        event.metadata.merge(metadata);
         Some(event)
     } else {
-        debug!("Received event without further handler {event_associated}");
+        debug!(
+            "Received event without further handler {}",
+            event_associated.name
+        );
         None
     }
 }
@@ -63,7 +70,7 @@ mod tests {
 
     use crate::events::{
         mqtt_subscribe::{MqttBodyMatch, MqttSubscribeEvent},
-        EventName,
+        EventName, NextEvent,
     };
 
     use super::*;
@@ -88,28 +95,28 @@ mod tests {
                     "test3".to_string(),
                     Some("test2".to_string()),
                     "topic3",
-                    MqttBodyMatch::ContainsString("content3".to_string()),
+                    MqttBodyMatch::BodyContains("content3".to_string()),
                 ),
                 create_mqtt_event(
                     "test4".to_string(),
                     Some("test2".to_string()),
                     "topic1",
-                    MqttBodyMatch::ContainsString("content4".to_string()),
+                    MqttBodyMatch::BodyContains("content4".to_string()),
                 ),
             ]
             .into_iter()
             .collect(),
         );
         let event = handle_incoming(&events, "topic1", b"content1");
-        assert_eq!(event.unwrap().next_event.unwrap(), "expected");
+        assert_eq!(event.unwrap().next_event.as_deref().unwrap(), "expected");
         let event = handle_incoming(&events, "topic2", b"content2");
         // no referencing event
         assert!(event.is_none());
         let event = handle_incoming(&events, "topic3", b"content3");
-        assert_eq!(event.unwrap().next_event.unwrap(), "expected");
+        assert_eq!(event.unwrap().next_event.as_deref().unwrap(), "expected");
 
         let event = handle_incoming(&events, "topic1", b"content4");
-        assert_eq!(event.unwrap().next_event.unwrap(), "expected");
+        assert_eq!(event.unwrap().next_event.as_deref().unwrap(), "expected");
     }
 
     fn create_mqtt_event(
@@ -122,13 +129,11 @@ mod tests {
             name,
             event_type: EventType::MqttSubscribe(MqttSubscribeEvent {
                 topic: topic.to_string(),
-                body,
+                body: body.into(),
                 pool_id: Default::default(),
             }),
-            next_event: event,
-            data: Default::default(),
-            next_event_template: Default::default(),
-            ignore_data: false,
+            next_event: event.map(NextEvent::Name),
+            ..Default::default()
         }
     }
 }

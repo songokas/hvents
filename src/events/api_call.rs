@@ -2,34 +2,41 @@ use core::fmt::Display;
 use std::collections::HashMap;
 
 use anyhow::anyhow;
+use indexmap::IndexMap;
 use log::debug;
 use reqwest::{
     blocking::Client,
     header::{HeaderMap, HeaderValue, CONTENT_TYPE},
 };
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
-use crate::config::PoolId;
+use crate::{config::PoolId, events::data::Metadata};
 
 use super::data::Data;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ApiCallEvent {
-    url: String,
+    pub url: String,
     #[serde(default)]
-    headers: HashMap<String, String>,
+    pub headers: HashMap<String, String>,
     #[serde(default)]
-    method: RequestMethod,
+    pub method: RequestMethod,
     #[serde(default)]
-    request_content: RequestContent,
+    pub request_content: RequestContent,
     #[serde(default)]
-    response_content: ResponseContent,
+    pub response_content: ResponseContent,
     #[serde(default)]
     pub pool_id: PoolId,
 }
 
 impl ApiCallEvent {
-    pub fn call_api(&self, client: &Client, data: &Data) -> Result<Data, anyhow::Error> {
+    pub fn call_api(
+        &self,
+        client: &Client,
+        data: &Data,
+        name: &str,
+    ) -> Result<(Data, Metadata), anyhow::Error> {
         let mut headers: HeaderMap = (&self.headers)
             .try_into()
             .map_err(|e| anyhow!("Invalid header specified: {e}"))?;
@@ -39,27 +46,28 @@ impl ApiCallEvent {
 
         debug!("Request to {} body {data:?} headers {headers:?}", self.url);
         let response = match &self.method {
-            RequestMethod::Delete => client.delete(&self.url).headers(headers).send()?.bytes()?,
+            RequestMethod::Delete => client.delete(&self.url).headers(headers).send()?,
             RequestMethod::Put => client
                 .put(&self.url)
                 .body(data.to_bytes()?)
                 .headers(headers)
-                .send()?
-                .bytes()?,
+                .send()?,
             RequestMethod::Post => client
                 .post(&self.url)
                 .body(data.to_bytes()?)
                 .headers(headers)
-                .send()?
-                .bytes()?,
-            RequestMethod::Get => client.get(&self.url).headers(headers).send()?.bytes()?,
+                .send()?,
+            RequestMethod::Get => client.get(&self.url).headers(headers).send()?,
         };
-        debug!("Response from {} bytes {response:?}", self.url);
-        Ok(match &self.response_content {
-            ResponseContent::Json => Data::Json(serde_json::from_slice(&response)?),
-            ResponseContent::Text => Data::String(String::from_utf8_lossy(&response).to_string()),
-            ResponseContent::Bytes => Data::Bytes(response.to_vec()),
-        })
+        debug!("Response from {} {response:?}", self.url);
+        let meta = json!({ name: {"headers": response.headers().into_iter().filter_map(|(k, v)| Some((k.as_str(), v.to_str().ok()?))).collect::<IndexMap<&str, &str>>()}}).into();
+        let bytes = response.bytes()?;
+        let data = match &self.response_content {
+            ResponseContent::Json => Data::Json(serde_json::from_slice(&bytes)?),
+            ResponseContent::Text => Data::String(String::from_utf8_lossy(&bytes).to_string()),
+            ResponseContent::Bytes => Data::Bytes(bytes.to_vec()),
+        };
+        Ok((data, meta))
     }
 }
 

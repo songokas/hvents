@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::events::time::str_to_time;
 
-use super::time::TimeResult;
+use super::time::ExecuteTime;
 
 pub const COOL_DOWN_DURATION: Duration = Duration::from_millis(3000);
 pub const EXECUTION_PERIOD: Duration = Duration::from_millis(1000);
@@ -32,15 +32,15 @@ impl PeriodEvent {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ExecutionPeriod {
     #[serde(deserialize_with = "str_to_time")]
-    pub from: TimeResult,
+    pub from: ExecuteTime,
     #[serde(deserialize_with = "str_to_time")]
-    pub to: TimeResult,
+    pub to: ExecuteTime,
 }
 
 impl ExecutionPeriod {
     pub fn matches(&self, now: DateTime<Local>) -> bool {
         // for time when its less than from
-        if matches!((&self.from, &self.to), (TimeResult::Time(f), TimeResult::Time(t)) if f > t) {
+        if matches!((&self.from, &self.to), (ExecuteTime::Time(f), ExecuteTime::Time(t)) if f > t) {
             self.from.lte(now) || self.to.gt(now)
         } else {
             self.from.lte(now) && self.to.gt(now)

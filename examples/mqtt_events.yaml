@@ -1,0 +1,68 @@
+
+events:
+  subscribe_all:
+    mqtt_subscribe:
+      topic: hvents/test/+
+      body_contains: garter
+    next_event: can_poison_be_removed
+  subscribe_snakes:
+    mqtt_subscribe:
+      topic: hvents/test/snakes
+    next_event: check_for_poison
+
+  resubscribe_snakes:
+    state:
+      replace:
+        poison: "false"
+    data: "poison removed "
+    next_event: print_out
+
+  can_poison_be_removed:
+    state: 
+      count: non_venomous_counter
+    next_event_template: '{{#if (eq state.poison "true")}}{{#if (eq state.non_venomous_counter "3")}}resubscribe_snakes{{/if}}{{/if}}'
+
+  check_for_poison:
+    next_event_template: '{{#if (eq data "taipan")}}unsubscribe_snake{{/if}}'
+
+  unsubscribe_snake:
+    mqtt_unsubscribe:
+      topic: hvents/test/snakes
+    state:
+      replace:
+        poison: "true"
+        non_venomous_counter: "0"
+    next_event: print_out
+    data: "unsubscribed because poisonous snake - "
+  publish_snake:
+    mqtt_publish:
+      topic: "hvents/test/snakes"
+      body: "{{data}}"
+    next_event: print_out
+
+  vine:
+    repeat: in 4 seconds
+    next_event: publish_snake
+    data: vine snake
+  taipan:
+    repeat: in 20 seconds
+    next_event: publish_snake
+    data: taipan
+  garter:
+    repeat: in 4 seconds
+    next_event: publish_snake
+    data: garter
+
+  print_out:
+    print: stdout
+
+start_with:
+  - subscribe_all
+  - subscribe_snakes
+  - vine
+  - taipan
+  - garter
+
+mqtt:
+  default:
+    host: localhost

@@ -28,17 +28,20 @@ pub fn timed_executor<'a>(
             let event_id = events
                 .get_event_id(&time_event.name)
                 .unwrap_or_else(|| panic!("Event {} must exit", time_event.name));
+
             debug!(
                 "Schedule time event with id={event_id} event={} next_event={} execute_time={}",
                 time_event.name,
-                time_event.next_event.as_deref().unwrap_or("none"),
+                time_event.next_event.as_deref().unwrap_or("unknown"),
                 time_event
                     .time_event()
                     .map(|t| t.execute_time.to_string())
                     .unwrap_or_else(|| "instant".to_string())
             );
             database.insert(event_id, &time_event)?;
-            events_to_execute.insert(event_id, time_event);
+            if let Some(e) = events_to_execute.insert(event_id, time_event) {
+                debug!("Previous event {} with the same id removed", e.name);
+            }
         }
         let now = now();
         let next_events_to_execute: Vec<(&str, ReferencingEvent)> = events_to_execute
@@ -46,10 +49,7 @@ pub fn timed_executor<'a>(
             .filter_map(|(event_id, event)| {
                 if !delay_events.contains_key(event.event_id()) && event.time_event()?.matches(now)
                 {
-                    Some((
-                        *event_id,
-                        events.get_event_by_name(event.next_event.as_deref()?)?,
-                    ))
+                    Some((*event_id, events.get_next_event(event)?))
                 } else {
                     None
                 }
@@ -67,18 +67,8 @@ pub fn timed_executor<'a>(
             queue_tx.send(next_event)?;
 
             if let EventType::Repeat(_) = &current_event.event_type {
-                // let reschedule_event = e.reset();
-                // if !reschedule_event.expired(now + COOL_DOWN_DURATION) {
-                //     current_event.event_type = EventType::Time(reschedule_event);
                 debug!("Requeue same event={}", current_event.name);
                 queue_tx.send(current_event)?;
-                // } else {
-                //     debug!(
-                //         "Ignoring requeue event={} since its expired {}",
-                //         current_event.name,
-                //         reschedule_event.execute_time.to_string()
-                //     );
-                // }
             }
 
             database.remove(event_id);
@@ -111,8 +101,8 @@ mod tests {
         config::now,
         database::Store,
         events::{
-            time::{TimeEvent, TimeResult},
-            EventType,
+            time::{ExecuteTime, TimeEvent},
+            EventType, NextEvent,
         },
     };
 
@@ -284,16 +274,15 @@ mod tests {
         ReferencingEvent {
             name: name.to_string(),
             event_type: EventType::Time(TimeEvent {
-                execute_time: TimeResult::Time((
+                execute_time: ExecuteTime::Time((
                     now.naive_local().time(),
                     now.naive_local().time().to_string(),
                 )),
                 event_id,
             }),
-            next_event,
-            next_event_template: None,
+            next_event: next_event.map(NextEvent::Name),
             data: crate::events::data::Data::Json(data),
-            ignore_data: false,
+            ..ReferencingEvent::default()
         }
     }
 
@@ -307,16 +296,15 @@ mod tests {
         ReferencingEvent {
             name: name.to_string(),
             event_type: EventType::Repeat(TimeEvent {
-                execute_time: TimeResult::Time((
+                execute_time: ExecuteTime::Time((
                     now.naive_local().time(),
                     now.naive_local().time().to_string(),
                 )),
                 event_id,
             }),
-            next_event,
-            next_event_template: None,
+            next_event: next_event.map(NextEvent::Name),
             data: crate::events::data::Data::Json(data),
-            ignore_data: false,
+            ..ReferencingEvent::default()
         }
     }
 }
