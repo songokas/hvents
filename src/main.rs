@@ -225,6 +225,7 @@ fn validate_events(
 
     // validate scan codes
     if devices.is_empty() {
+        #[cfg(target_os = "linux")]
         if let Some(e) = events
             .iter()
             .find(|e| matches!(e.event_type, EventType::ScanCodeRead(_)))
