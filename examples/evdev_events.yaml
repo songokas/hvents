@@ -1,0 +1,22 @@
+events:
+  read_code:
+    scan_code_read: 0x7a1a
+    # multiple events will overwrite each other
+    # so next_event is only executed once
+    next_event: schedule_write
+  schedule_write:
+    time: in 3 seconds
+    next_event: write_code
+  write_code:
+    execute:
+      command: ir-ctl
+      args: ["-S", "nec:0x7a1b"]
+    next_event: print_out
+  print_out:
+    print: stdout
+
+start_with:
+  - read_code
+
+devices:
+  default: /dev/input/event0

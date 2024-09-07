@@ -11,6 +11,8 @@ pub mod mqtt_subscribe;
 pub mod mqtt_unsubscribe;
 pub mod period;
 pub mod print;
+#[cfg(target_os = "linux")]
+pub mod scan_code_read;
 pub mod time;
 
 use command::CommandEvent;
@@ -64,6 +66,8 @@ pub enum EventType {
     Print(PrintEvent),
     #[default]
     Pass,
+    #[cfg(target_os = "linux")]
+    ScanCodeRead(scan_code_read::ScanCodeReadEvent),
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]

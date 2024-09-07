@@ -10,7 +10,7 @@ pub fn mqtt_executor(
     mut connection: Connection,
     events: &Events,
     queue_tx: Sender<ReferencingEvent>,
-) -> Result<(), anyhow::Error> {
+) -> anyhow::Result<()> {
     let mut show_error = true;
     for notification in connection.iter() {
         match notification {

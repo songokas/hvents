@@ -313,6 +313,9 @@ pub fn event_executor(
                 }
                 EventType::Print(e) => e.run(&received.data),
                 EventType::Pass => (),
+                // events begin in evdev executor
+                #[cfg(target_os = "linux")]
+                EventType::ScanCodeRead(_) => continue,
             }
 
             send_next_event(received.data, received.metadata, next_event_name);

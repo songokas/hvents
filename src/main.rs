@@ -18,7 +18,13 @@ use log::{debug, info};
 use notify::{RecommendedWatcher, Watcher};
 use std::env::args;
 use std::fs::File;
+use std::path::PathBuf;
 use std::{sync::mpsc, thread};
+
+#[cfg(target_os = "linux")]
+use hvents::executors::evdev::evdev_executor;
+#[cfg(target_os = "linux")]
+use log::error;
 
 fn main() -> Result<(), anyhow::Error> {
     env_logger::try_init_from_env(Env::default().default_filter_or("info"))?;
@@ -60,7 +66,7 @@ fn main() -> Result<(), anyhow::Error> {
 
     info!("Loaded {} events", events.len());
 
-    validate_events(&events, &config.start_with, &config.http)?;
+    validate_events(&events, &config.start_with, &config.http, &config.devices)?;
 
     let (queue_tx, queue_rx) = mpsc::channel();
     let (timer_tx, timer_rx) = mpsc::channel();
@@ -105,6 +111,23 @@ fn main() -> Result<(), anyhow::Error> {
             mqtt_handles.push(h);
         }
 
+        #[cfg(target_os = "linux")]
+        let mut device_handles = Vec::new();
+        #[cfg(target_os = "linux")]
+        for (_, device_path) in config.devices {
+            let queue_tx = queue_tx.clone();
+            let h = s.spawn(|| {
+                let path = device_path;
+                if let Err(e) = evdev_executor(&events, queue_tx, &path) {
+                    error!(
+                        "Reading input events from device={} failed: {e}",
+                        path.to_string_lossy()
+                    );
+                }
+            });
+            device_handles.push(h);
+        }
+
         let _files_changed_handle = if watcher.is_some() {
             s.spawn(|| file_changed_executor(&events, queue_tx.clone(), file_rx))
                 .into()
@@ -134,17 +157,22 @@ fn main() -> Result<(), anyhow::Error> {
         });
 
         let mut time_events = IndexMap::new();
+        for ref_event in events.iter().filter(|e| e.time_event().is_some()) {
+            if let Some(timer_event) = database.get::<ReferencingEvent>(ref_event.event_id()) {
+                debug!("Restore event {}", ref_event.event_id());
+                time_events.insert(ref_event.event_id(), timer_event);
+            }
+        }
         for name in config.start_with.iter() {
-            let event = events
-                .get_event_by_name(name)
-                .unwrap_or_else(|| panic!("Event {name} must exit"));
             let event_id = events
                 .get_event_id(name)
                 .unwrap_or_else(|| panic!("Event {name} must exit"));
-            if let Some(timer_event) = database.get::<ReferencingEvent>(event_id) {
-                debug!("Restore event {}", event_id);
-                time_events.insert(event_id, timer_event);
+            if time_events.contains_key(event_id) {
+                continue;
             } else {
+                let event = events
+                    .get_event_by_name(name)
+                    .unwrap_or_else(|| panic!("Event {name} must exit"));
                 info!("Start event {}", event.name);
                 queue_tx.send(event)?;
             }
@@ -160,6 +188,7 @@ fn validate_events(
     events: &Events,
     start_events: &Vec<EventName>,
     http_listen: &IndexMap<PoolId, String>,
+    devices: &IndexMap<PoolId, PathBuf>,
 ) -> anyhow::Result<()> {
     if events.is_empty() {
         bail!("No events specified, please define at least one event");
@@ -191,6 +220,16 @@ fn validate_events(
             .find(|e| matches!(e.event_type, EventType::ApiListen(_)))
         {
             bail!("Please provide http configuration e.g. http: default: 127.0.0.1:8222 in order to use api_listen events. api_listen is provided in {}", e.name);
+        }
+    }
+
+    // validate scan codes
+    if devices.is_empty() {
+        if let Some(e) = events
+            .iter()
+            .find(|e| matches!(e.event_type, EventType::ScanCodeRead(_)))
+        {
+            bail!("Please provide device configuration e.g. devices: default: /dev/input/event0 in order to use scan code read events. scan_code_read is provided in {}", e.name);
         }
     }
 

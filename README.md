@@ -14,9 +14,18 @@ Supports:
 
 ## Install deb
 
+amd64
+
 ```
-wget https://github.com/songokas/hvents/releases/download/v0.3.0/hvents_0.3.0_amd64.deb \
-  && sudo apt install ./hvents_0.3.0_amd64.deb
+wget https://github.com/songokas/hvents/releases/download/v0.3.1/hvents_0.3.1_amd64.deb \
+  && sudo apt install ./hvents_0.3.1_amd64.deb
+```
+
+armhf
+
+```
+wget https://github.com/songokas/hvents/releases/download/v0.3.1/hvents_0.3.1_armhf.deb \
+  && sudo apt install ./hvents_0.3.1_armhf.deb
 ```
 
 ## Download binary
@@ -116,6 +125,11 @@ restore: data/
 location:
     latitude: 52.37403
     longitude: 4.88969
+
+# specify devices to read scancodes from
+# optional
+devices:
+    default: /dev/input/event0
 ```
 
 ## Run 
@@ -342,6 +356,14 @@ Command takes input from the previous event data
     vars:
         ENV_VARIABLE_KEY: value 
 ```
+
+### Read scan codes from the device
+
+```yaml
+  scan_code_read: 0x7a1a
+```
+
+devices needs to be defined globally
 
 ## Template data
 

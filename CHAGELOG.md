@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2024-09-07
+
+### Added
+
+- introduce evdev library for scancode reading (check evdev_events.yaml example)
+- arm-unknown-linux-gnueabihf binary build
+
+### Changed
+
+- use debian buster for deb builds
+
+### Fixed
+
+- restore all time events instead of the ones defined in startup
+
 ## [0.3.0] - 2024-09-01
 
 ### Added

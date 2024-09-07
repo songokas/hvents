@@ -28,6 +28,9 @@ pub struct Config {
     pub http: IndexMap<PoolId, String>,
     #[serde(default)]
     pub api: IndexMap<PoolId, ClientConfiguration>,
+    /// pool id is currently not used for devices
+    #[serde(default)]
+    pub devices: IndexMap<PoolId, PathBuf>,
 }
 #[derive(Deserialize)]
 pub struct Location {
