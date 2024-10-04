@@ -34,8 +34,7 @@ start_with:
 #       next_event: light_on
 
 #     schedule_light_off:
-#       time:
-#         execute_time: in 20 seconds
+#       time: in 20 seconds
 #       next_event: light_off
 
 #     light_on:

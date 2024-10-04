@@ -30,7 +30,7 @@ wget https://github.com/songokas/hvents/releases/download/v0.3.1/hvents_0.3.1_ar
 
 ## Download binary
 
-https://github.com/hvens/hvents/releases
+https://github.com/hvents/releases
 
 
 ## Install from source
