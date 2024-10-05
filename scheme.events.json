@@ -1,0 +1,284 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.com/hvents.events.schema.json",
+    "title": "home hvents.events configuration",
+    "description": "hvents events configuration",
+    "type": "object",
+    "patternProperties": {
+        ".+": {
+            "properties": {
+                "execute": {
+                    "type": "object",
+                    "properties": {
+                        "command": {
+                            "type": "string"
+                        },
+                        "args": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "mqtt_subscribe": {
+                    "type": [
+                        "object",
+                        "string"
+                    ],
+                    "properties": {
+                        "topic": {
+                            "type": "string"
+                        },
+                        "body_contains": {
+                            "type": "string"
+                        },
+                        "body": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "mqtt_publish": {
+                    "type": [
+                        "object",
+                        "string"
+                    ],
+                    "properties": {
+                        "topic": {
+                            "type": "string"
+                        },
+                        "body": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "repeat": {
+                    "type": [
+                        "object",
+                        "string"
+                    ],
+                    "properties": {
+                        "execute_time": {
+                            "type": "string"
+                        },
+                        "event_id": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "time": {
+                    "type": [
+                        "object",
+                        "string"
+                    ],
+                    "properties": {
+                        "execute_time": {
+                            "type": "string"
+                        },
+                        "event_id": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "period": {
+                    "type": "object",
+                    "properties": {
+                        "from": {
+                            "type": "string"
+                        },
+                        "to": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "file_read": {
+                    "type": [
+                        "object",
+                        "string"
+                    ],
+                    "properties": {
+                        "file": {
+                            "type": "string"
+                        },
+                        "data_type": {
+                            "$ref": "#/$defs/data_type"
+                        }
+                    }
+                },
+                "api_call": {
+                    "type": [
+                        "string",
+                        "object"
+                    ],
+                    "properties": {
+                        "url": {
+                            "type": "string",
+                            "format": "url"
+                        },
+                        "headers": {
+                            "type": "object"
+                        },
+                        "method": {
+                            "enum": [
+                                "get",
+                                "post",
+                                "put",
+                                "delete"
+                            ]
+                        },
+                        "request_content": {
+                            "$ref": "#/$defs/content_type"
+                        },
+                        "response_content": {
+                            "$ref": "#/$defs/content_type"
+                        }
+                    }
+                },
+                "api_listen": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string"
+                        },
+                        "method": {
+                            "enum": [
+                                "get",
+                                "post",
+                                "put",
+                                "delete"
+                            ]
+                        },
+                        "request_content": {
+                            "$ref": "#/$defs/content_type"
+                        },
+                        "response_content": {
+                            "$ref": "#/$defs/content_type"
+                        },
+                        "response_body": {
+                            "type": "string"
+                        },
+                        "pool_id": {
+                            "type": "string",
+                            "description": "Listener name"
+                        }
+                    }
+                },
+                "file_write": {
+                    "type": [
+                        "object",
+                        "string"
+                    ],
+                    "properties": {
+                        "file": {
+                            "type": "string"
+                        },
+                        "mode": {
+                            "enum": [
+                                "append",
+                                "truncate"
+                            ]
+                        }
+                    }
+                },
+                "watch": {
+                    "type": [
+                        "object",
+                        "string"
+                    ],
+                    "properties": {
+                        "path": {
+                            "type": "string"
+                        },
+                        "action": {
+                            "enum": [
+                                "start",
+                                "stop"
+                            ]
+                        },
+                        "recursive": {
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "path"
+                    ]
+                },
+                "file_changed": {
+                    "type": [
+                        "object",
+                        "string"
+                    ],
+                    "properties": {
+                        "path": {
+                            "type": "string"
+                        },
+                        "when": {
+                            "enum": [
+                                "created",
+                                "written",
+                                "removed"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "path"
+                    ]
+                },
+                "print": {
+                    "enum": [
+                        "stderr",
+                        "stdout"
+                    ]
+                },
+                "next_event": {
+                    "type": "string"
+                },
+                "next_event_template": {
+                    "type": "string"
+                },
+                "merge_data": {
+                    "enum": [
+                        "yes",
+                        "no",
+                        "overwrite"
+                    ]
+                },
+                "data": {
+                    "type": [
+                        "string",
+                        "object"
+                    ]
+                },
+                "state": {
+                    "type": "object",
+                    "properties": {
+                        "replace": {
+                            "type": "object"
+                        },
+                        "count": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "minItems": 1,
+    "uniqueItems": true,
+    "$defs": {
+        "data_type": {
+            "enum": [
+                "string",
+                "json",
+                "bytes"
+            ]
+        },
+        "content_type": {
+            "enum": [
+                "text",
+                "json",
+                "bytes"
+            ]
+        }
+    }
+}

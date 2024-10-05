@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../scheme.json
 
 events:
   subscribe_all:
@@ -6,8 +7,7 @@ events:
       body_contains: garter
     next_event: can_poison_be_removed
   subscribe_snakes:
-    mqtt_subscribe:
-      topic: hvents/test/snakes
+    mqtt_subscribe: hvents/test/snakes
     next_event: check_for_poison
 
   resubscribe_snakes:
@@ -18,7 +18,7 @@ events:
     next_event: print_out
 
   can_poison_be_removed:
-    state: 
+    state:
       count: non_venomous_counter
     next_event_template: '{{#if (eq state.poison "true")}}{{#if (eq state.non_venomous_counter "3")}}resubscribe_snakes{{/if}}{{/if}}'
 
