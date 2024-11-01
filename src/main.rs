@@ -1,4 +1,5 @@
 use anyhow::{anyhow, bail, Context};
+use clap::{Parser, ValueHint};
 use core::time::Duration;
 use env_logger::Env;
 use hvents::config::{init_location, ClientConfiguration, Config, PoolId};
@@ -16,7 +17,6 @@ use hvents::pools::mqtt::MqttPool;
 use indexmap::IndexMap;
 use log::{debug, info};
 use notify::{RecommendedWatcher, Watcher};
-use std::env::args;
 use std::fs::File;
 use std::path::PathBuf;
 use std::{sync::mpsc, thread};
@@ -26,13 +26,20 @@ use hvents::executors::evdev::evdev_executor;
 #[cfg(target_os = "linux")]
 use log::error;
 
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+struct CliArguments {
+    #[arg(required = true, help = "Path to a configuration file", value_hint = ValueHint::FilePath)]
+    config: PathBuf,
+    #[arg(short, long, default_value = "info")]
+    verbosity: String,
+}
+
 fn main() -> Result<(), anyhow::Error> {
-    env_logger::try_init_from_env(Env::default().default_filter_or("info"))?;
-    let config_file = args()
-        .nth(1)
-        .ok_or_else(|| anyhow!("Provide configuration file as argument"))?;
-    let f = File::open(&config_file)
-        .with_context(|| anyhow!("Unable to load main {config_file} file"))?;
+    let args = CliArguments::parse();
+    env_logger::try_init_from_env(Env::default().default_filter_or(args.verbosity))?;
+    let f = File::open(&args.config)
+        .with_context(|| anyhow!("Unable to load main {} file", args.config.to_string_lossy()))?;
     let config: Config = serde_yaml::from_reader(f)?;
 
     if let Some(l) = &config.location {
