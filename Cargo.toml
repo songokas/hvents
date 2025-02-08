@@ -35,10 +35,18 @@ notify = { version = "6.1.1", default-features = false, features = [
     "macos_kqueue",
 ] }
 tiny_http = "0.12"
+metrics = "0.24"
+metrics-exporter-prometheus = { version = "0.16", default-features = false, optional = true, features = [
+    "http-listener",
+] }
 
 [target.'cfg(unix)'.dependencies]
 evdev = { version = "0.12", default-features = false, features = ["serde"] }
 hex = { version = "0.4" }
+
+[features]
+
+default = ["metrics-exporter-prometheus"]
 
 [build-dependencies]
 cargo-deb = "2"

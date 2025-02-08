@@ -4,6 +4,7 @@ use std::{
 };
 
 use log::{debug, error, warn};
+use metrics::counter;
 use notify::{
     event::{AccessKind, AccessMode, CreateKind, RemoveKind},
     Event, EventKind,
@@ -26,6 +27,7 @@ pub fn file_changed_executor(
                     EventKind::Remove(RemoveKind::Any | RemoveKind::File) => WatchKind::Removed,
                     _ => continue,
                 };
+                counter!("files_changed_total").increment(1);
                 let Some(path) = event.paths.first() else {
                     warn!("No paths are provided for event");
                     continue;

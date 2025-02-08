@@ -1,6 +1,7 @@
 use std::sync::mpsc::Sender;
 
 use log::{debug, error};
+use metrics::counter;
 use rumqttc::{Connection, Event, Incoming};
 use serde_json::json;
 
@@ -15,17 +16,20 @@ pub fn mqtt_executor(
     for notification in connection.iter() {
         match notification {
             Ok(Event::Incoming(Incoming::Publish(packet))) => {
+                counter!("mqtt_publish_total").increment(1);
                 show_error = true;
                 debug!("Incoming mqtt event {} {:?}", packet.topic, packet.payload);
                 if let Some(e) = handle_incoming(events, &packet.topic, &packet.payload) {
                     queue_tx.send(e)?;
                 }
             }
-            Ok(_) => {
-                show_error = true;
+            Ok(_e) => {
+                // debug!("Event {_e:?}");
+                // show_error = true;
                 continue;
             }
             Err(e) => {
+                counter!("mqtt.errors").increment(1);
                 if show_error {
                     error!("Receive mqtt error {e}. Suppressing further messages until success");
                 }

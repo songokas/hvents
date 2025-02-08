@@ -15,6 +15,7 @@ use hvents::pools::http::HttpQueuePool;
 use hvents::pools::mqtt::MqttPool;
 use indexmap::IndexMap;
 use log::{debug, info};
+use metrics::gauge;
 use notify::{RecommendedWatcher, Watcher};
 use std::env::args;
 use std::fs::File;
@@ -28,6 +29,17 @@ use log::error;
 
 fn main() -> Result<(), anyhow::Error> {
     env_logger::try_init_from_env(Env::default().default_filter_or("info"))?;
+    #[cfg(feature = "metrics-exporter-prometheus")]
+    if let Ok(s) = std::env::var("PROMETHEUS_LISTEN") {
+        let mut builder = metrics_exporter_prometheus::PrometheusBuilder::new();
+
+        builder = builder.with_http_listener(
+            s.parse::<core::net::SocketAddr>()
+                .expect("Prometheus socket address"),
+        );
+        builder.install().expect("Failed to install recorder");
+    }
+
     let config_file = args()
         .nth(1)
         .ok_or_else(|| anyhow!("Provide configuration file as argument"))?;
@@ -65,6 +77,7 @@ fn main() -> Result<(), anyhow::Error> {
     let events = events.merge(config.events);
 
     info!("Loaded {} events", events.len());
+    gauge!("loaded_events_total").set(events.len() as f64);
 
     validate_events(&events, &config.start_with, &config.http, &config.devices)?;
 
@@ -103,12 +116,14 @@ fn main() -> Result<(), anyhow::Error> {
     }
 
     thread::scope(|s| -> Result<(), anyhow::Error> {
+        let mut handle_count = 0;
         let mut mqtt_handles = Vec::new();
         for (pool_id, mqtt_client) in config.mqtt {
             let connection = mqtt_client_pool.configure(pool_id, mqtt_client);
             let queue_tx = queue_tx.clone();
             let h = s.spawn(|| mqtt_executor(connection, &events, queue_tx));
             mqtt_handles.push(h);
+            handle_count += 1;
         }
 
         #[cfg(target_os = "linux")]
@@ -126,9 +141,11 @@ fn main() -> Result<(), anyhow::Error> {
                 }
             });
             device_handles.push(h);
+            handle_count += 1;
         }
 
         let _files_changed_handle = if watcher.is_some() {
+            handle_count += 1;
             s.spawn(|| file_changed_executor(&events, queue_tx.clone(), file_rx))
                 .into()
         } else {
@@ -141,8 +158,10 @@ fn main() -> Result<(), anyhow::Error> {
             http_queue_pool.configure(pool_id.clone(), pool_queue)?;
             let h = s.spawn(|| http_executor(http_queue, listen, &events, queue_tx.clone()));
             http_handles.push(h);
+            handle_count += 1;
         }
 
+        handle_count += 1;
         let _queue_handle = s.spawn(|| {
             event_executor(
                 &events,
@@ -179,7 +198,8 @@ fn main() -> Result<(), anyhow::Error> {
         }
         let _timer_handle =
             s.spawn(|| timed_executor(&events, time_events, timer_rx, queue_tx.clone(), database));
-
+        handle_count += 1;
+        gauge!("executors_total").set(handle_count);
         Ok(())
     })
 }

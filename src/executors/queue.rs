@@ -5,6 +5,7 @@ use std::{
 
 use indexmap::IndexMap;
 use log::{debug, error, info, warn};
+use metrics::counter;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use rumqttc::QoS;
 
@@ -46,6 +47,9 @@ pub fn event_executor(
     };
     scope(|thread_scope| {
         'main: for mut received in queue_rx {
+            counter!("received_events_total", "event_type" => received.event_type.to_string())
+                .increment(1);
+
             if let Some(key) = received.state.as_ref().and_then(|s| s.count.as_deref()) {
                 state
                     .entry(key.to_string())
@@ -84,17 +88,19 @@ pub fn event_executor(
                 continue;
             }
 
+            debug!("Running event={}", received.event_id());
+
             match received.event_type {
                 EventType::MqttSubscribe(e) => {
                     if let Some(c) = mqtt_pool.get(&e.pool_id) {
                         if let Err(e) = c.try_subscribe(&e.topic, QoS::AtMostOnce) {
                             error!("Failed to subscribe {e}")
                         } else {
-                            info!("Subscribed to {}", e.topic);
+                            info!("Subscribed to topic={}", e.topic);
                         }
                     } else {
                         warn!(
-                            "Mqtt subscribed for {} expected, but no client is defined. Ignoring",
+                            "Mqtt subscribed for topic={} expected, but no client is defined. Ignoring",
                             e.topic
                         );
                     }
@@ -105,10 +111,12 @@ pub fn event_executor(
                     if let Some(c) = mqtt_pool.get(&e.pool_id) {
                         if let Err(e) = c.try_unsubscribe(&e.topic) {
                             error!("Failed to subscribe {e}")
+                        } else {
+                            info!("Unsubscribed topic={}", e.topic);
                         }
                     } else {
                         warn!(
-                            "Mqtt unsubscribe for {} expected, but no client is defined. Ignoring",
+                            "Mqtt unsubscribe for topic={} expected, but no client is defined. Ignoring",
                             e.topic
                         );
                     }
@@ -150,7 +158,7 @@ pub fn event_executor(
                             info!("Empty body provided for topic={}. Ignoring", topic);
                             continue;
                         }
-                        debug!("Publish to topic={} body={payload:?}", topic);
+                        debug!("Publish to topic={topic} body={payload:?}");
                         if let Err(e) = c.try_publish(&topic, QoS::AtLeastOnce, e.retain, payload) {
                             error!("Failed to publish topic={topic} {e}");
                             continue;
@@ -171,9 +179,12 @@ pub fn event_executor(
                                 continue 'main;
                             }
                         };
+                        counter!("api_calls_total", "method" => e.method.to_string()).increment(1);
+
                         let result = Builder::new()
                             .name(format!("api_call {}", e.url))
                             .spawn_scoped(thread_scope, move || {
+                                debug!("Call api url={}", e.url);
                                 match e.call_api(client, &received.data, &received.name) {
                                     Ok((d, m)) => {
                                         received.data.merge_with_policy(d, received.merge_data);
@@ -201,6 +212,7 @@ pub fn event_executor(
                 EventType::ApiListen(ref e) => match e.action {
                     ApiListenAction::Start => {
                         if let Some(queue) = http_queue_pool.get(&e.pool_id) {
+                            debug!("Listen for an api url={}", e.path);
                             queue.lock().expect("http queue lock").replace(received);
                         } else {
                             warn!("No http queue found for {}", e.pool_id);
@@ -210,6 +222,7 @@ pub fn event_executor(
                     }
                     ApiListenAction::Stop => {
                         if let Some(queue) = http_queue_pool.get(&e.pool_id) {
+                            debug!("Listen api stop url={}", e.path);
                             queue
                                 .lock()
                                 .expect("http queue lock")
@@ -240,6 +253,7 @@ pub fn event_executor(
                 }
                 EventType::FileRead(ref f) => match f.read() {
                     Ok((d, m)) => {
+                        debug!("File read path={}", f.file.to_string_lossy());
                         received.merge(d);
                         received.metadata.merge(m);
                     }
@@ -252,6 +266,8 @@ pub fn event_executor(
                     if let Err(e) = f.write(&received.data) {
                         error!("Error while writing file {e}");
                         continue;
+                    } else {
+                        debug!("File write path={}", f.file.to_string_lossy());
                     }
                 }
                 // these events are handled in file change executor
@@ -269,6 +285,8 @@ pub fn event_executor(
                             .transpose()
                         {
                             error!("Unable to watch {} {e}", f.path.to_string_lossy());
+                        } else {
+                            debug!("Watching path={} for changes", f.path.to_string_lossy());
                         }
                     }
                     WatchAction::Stop => {
@@ -278,10 +296,19 @@ pub fn event_executor(
                             .transpose()
                         {
                             error!("Unable to unwatch {} {e}", f.path.to_string_lossy());
+                        } else {
+                            debug!(
+                                "Stoped watching path={} for changes",
+                                f.path.to_string_lossy()
+                            );
                         }
                     }
                 },
                 EventType::Execute(mut c) => {
+                    debug!(
+                        "Executing command name={} with arguments {:?}",
+                        c.command, c.args
+                    );
                     let args = &mut c.args;
                     for (index, template) in &c.replace_args {
                         match handlebars.render_template(template, &template_data) {
@@ -296,10 +323,14 @@ pub fn event_executor(
                             }
                         };
                     }
+
+                    counter!("commands_total", "command" => c.command.to_string()).increment(1);
+
                     let result = Builder::new()
                         .name(format!("command {}", c.command))
                         .spawn_scoped(thread_scope, move || match c.run(&received.data) {
                             Ok((d, m)) => {
+                                debug!("Command name={} finished with data {d:?}", c.command);
                                 received.data.merge_with_policy(d, received.merge_data);
                                 received.metadata.merge(m);
                                 send_next_event(received.data, received.metadata, next_event_name);

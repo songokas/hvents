@@ -3,6 +3,7 @@ use std::sync::mpsc::Sender;
 use anyhow::anyhow;
 use indexmap::IndexSet;
 use log::{debug, error, warn};
+use metrics::counter;
 use serde::Serialize;
 use serde_json::{json, Value};
 use tiny_http::{Header, Method, Request, Response, Server};
@@ -35,6 +36,8 @@ pub fn http_executor(
             request.url(),
             request.headers()
         );
+
+        counter!("http_requests_total", "method" => request.method().to_string()).increment(1);
 
         let response = match handle_incoming(
             events,

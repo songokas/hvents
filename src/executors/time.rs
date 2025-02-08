@@ -7,6 +7,7 @@ use std::{
 
 use indexmap::IndexMap;
 use log::{debug, info};
+use metrics::{counter, gauge};
 
 use crate::{
     config::now,
@@ -25,6 +26,9 @@ pub fn timed_executor<'a>(
     loop {
         delay_events.retain(|_, d| d.elapsed() <= COOL_DOWN_DURATION);
         for time_event in timer_rx.try_iter() {
+            counter!("time_events_total", "event_type" => time_event.event_type.to_string())
+                .increment(1);
+
             let event_id = events
                 .get_event_id(&time_event.name)
                 .unwrap_or_else(|| panic!("Event {} must exit", time_event.name));
@@ -43,6 +47,9 @@ pub fn timed_executor<'a>(
                 debug!("Previous event {} with the same id removed", e.name);
             }
         }
+
+        gauge!("time_events").set(events_to_execute.len() as f64);
+
         let now = now();
         let next_events_to_execute: Vec<(&str, ReferencingEvent)> = events_to_execute
             .iter()
