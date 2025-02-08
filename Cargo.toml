@@ -1,6 +1,6 @@
 [package]
 name = "hvents"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2021"
 
 authors = ["Tomas Jakstas <tom.jakstas@gmail.com>"]
