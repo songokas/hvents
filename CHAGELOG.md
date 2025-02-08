@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- json scheme files for yaml configuration
+- cli arguments to provide version information
+
+### Fixed
+
+- evdev wait for device to be available
+
 ## [0.3.1] - 2024-09-07
 
 ### Added

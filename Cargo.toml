@@ -46,7 +46,8 @@ hex = { version = "0.4" }
 
 [features]
 
-default = ["metrics-exporter-prometheus"]
+metrics = ["metrics-exporter-prometheus"]
+default = ["metrics"]
 
 [build-dependencies]
 cargo-deb = "2"

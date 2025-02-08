@@ -1,0 +1,127 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.com/hvents.schema.json",
+    "title": "home event configuration",
+    "description": "Full event configuration",
+    "type": "object",
+    "properties": {
+        "start_with": {
+            "description": "Events to start with on startup",
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+        },
+        "event_files": {
+            "description": "Additional files with events",
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+        },
+        "groups": {
+            "description": "Additional files with events with a specific prefix",
+            "type": "object",
+            "patternProperties": {
+                ".+": {
+                    "type": "string"
+                }
+            },
+            "minItems": 1,
+            "uniqueItems": true
+        },
+        "events": {
+            "$ref": "scheme.events.json"
+        },
+        "http": {
+            "description": "Http listener configuration",
+            "type": "object",
+            "patternProperties": {
+                ".+": {
+                    "type": "string"
+                }
+            },
+            "minItems": 1,
+            "uniqueItems": true
+        },
+        "api": {
+            "description": "Api client configuration",
+            "type": "object",
+            "patternProperties": {
+                ".+": {
+                    "properties": {
+                        "default_headers": {
+                            "type": "object",
+                            "patternProperties": {
+                                ".+": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "minItems": 1,
+            "uniqueItems": true
+        },
+        "devices": {
+            "description": "Local device configuration",
+            "type": "object",
+            "patternProperties": {
+                ".+": {}
+            },
+            "minItems": 1,
+            "uniqueItems": true
+        },
+        "location": {
+            "description": "Location information",
+            "properties": {
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                }
+            },
+            "required": ["latitude", "longitude"]
+
+        },
+        "mqtt": {
+            "description": "Mqtt configuration",
+            "type": "object",
+            "patternProperties": {
+                ".+": {
+                    "properties": {
+                        "host": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "integer"
+                        },
+                        "user": {
+                            "type": "string"
+                        },
+                        "pass": {
+                            "type": "string"
+                        },
+                        "client_id": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "host"
+                    ]
+                }
+            },
+            "minItems": 1,
+            "uniqueItems": true
+        }
+    },
+    "required": [
+        "start_with"
+    ]
+}
