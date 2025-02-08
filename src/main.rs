@@ -34,9 +34,6 @@ struct CliArguments {
     config: PathBuf,
     #[arg(short, long, default_value = "info")]
     verbosity: String,
-    #[cfg(feature = "metrics")]
-    #[arg(long)]
-    metrics_listen: Option<core::net::SocketAddr>,
 }
 
 fn main() -> Result<(), anyhow::Error> {
@@ -46,12 +43,7 @@ fn main() -> Result<(), anyhow::Error> {
         .with_context(|| anyhow!("Unable to load main {} file", args.config.to_string_lossy()))?;
     let config: Config = serde_yaml::from_reader(f)?;
     #[cfg(feature = "metrics")]
-    if let Some(s) = args.metrics_listen {
-        metrics_exporter_prometheus::PrometheusBuilder::new()
-            .with_http_listener(s)
-            .install()
-            .expect("Failed to install recorder");
-    }
+    let _recorder = metrics_prometheus::install();
     if let Some(l) = &config.location {
         init_location(l.latitude, l.longitude);
     }

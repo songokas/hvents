@@ -22,6 +22,7 @@ pub struct ApiCallEvent {
     pub headers: HashMap<String, String>,
     #[serde(default)]
     pub method: RequestMethod,
+    pub request_body: Option<String>,
     #[serde(default)]
     pub request_content: RequestContent,
     #[serde(default)]

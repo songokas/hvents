@@ -179,6 +179,16 @@ pub fn event_executor(
                                 continue 'main;
                             }
                         };
+                        if let Some(body) = &e.request_body {
+                            match handlebars.render_template(body, &template_data) {
+                                Ok(body) => received.data = Data::String(body),
+                                Err(e) => {
+                                    error!("Failed to render request_body template {e}");
+                                    continue 'main;
+                                }
+                            }
+                        }
+
                         counter!("api_calls_total", "method" => e.method.to_string()).increment(1);
 
                         let result = Builder::new()

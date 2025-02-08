@@ -36,9 +36,8 @@ notify = { version = "6.1.1", default-features = false, features = [
 ] }
 tiny_http = "0.12"
 metrics = "0.24"
-metrics-exporter-prometheus = { version = "0.16", default-features = false, optional = true, features = [
-    "http-listener",
-] }
+metrics-prometheus = { version = "0.9", optional = true }
+prometheus = "0.13.4"
 
 [target.'cfg(unix)'.dependencies]
 evdev = { version = "0.12", default-features = false, features = ["serde"] }
@@ -46,7 +45,7 @@ hex = { version = "0.4" }
 
 [features]
 
-metrics = ["metrics-exporter-prometheus"]
+metrics = ["metrics-prometheus"]
 default = ["metrics"]
 
 [build-dependencies]

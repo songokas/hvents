@@ -88,6 +88,7 @@ impl Display for EventType {
             EventType::Execute(_) => write!(f, "execute"),
             EventType::Print(_) => write!(f, "print"),
             EventType::Pass => write!(f, "pass"),
+            #[cfg(target_os = "linux")]
             EventType::ScanCodeRead(_) => write!(f, "scan_code_read"),
         }
     }
