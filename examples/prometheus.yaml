@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../scheme.json
+
+events:
+  schedule_metrics_calls:
+    repeat: in 15 seconds
+    next_event: send_metrics_to_prometheus
+  send_metrics_to_prometheus:
+    api_call: 
+      url: http://localhost:9002/prometheus/metrics/
+      method: post
+      request_body: "{{prometheus_metrics}}"
+  local_metrics:
+    api_listen:
+      path: /local/metrics/
+      response_body: "{{prometheus_metrics}}"
+  prometheus_metrics:
+    api_listen:
+      path: /prometheus/metrics/
+      method: post
+      request_content: text
+      response_body: OK
+    next_event: print_out
+  print_local_metrics:
+    api_call: http://localhost:9002/local/metrics/
+    next_event: print_out
+  print_out:
+    print: stdout
+http:
+  default: localhost:9002
+
+start_with:
+  - schedule_metrics_calls
+  - print_local_metrics
+  - local_metrics
+  - prometheus_metrics

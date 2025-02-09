@@ -1,0 +1,13 @@
+  # yaml-language-server: $schema=../scheme.events.json
+
+  movement:
+    mqtt_subscribe:
+      topic: security/hall/movement
+      body: "True"
+    next_event: schedule_light_on
+
+  schedule_light_on:
+    period:
+      from: 23:00
+      to: 05:00
+    next_event: light_on

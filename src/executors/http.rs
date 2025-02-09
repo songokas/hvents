@@ -3,6 +3,7 @@ use std::sync::mpsc::Sender;
 use anyhow::anyhow;
 use indexmap::IndexSet;
 use log::{debug, error, warn};
+use metrics::counter;
 use serde::Serialize;
 use serde_json::{json, Value};
 use tiny_http::{Header, Method, Request, Response, Server};
@@ -35,6 +36,8 @@ pub fn http_executor(
             request.url(),
             request.headers()
         );
+
+        counter!("http_requests_total", "method" => request.method().to_string()).increment(1);
 
         let response = match handle_incoming(
             events,
@@ -160,17 +163,14 @@ fn handle_incoming(
 
         (ResponseContent::Text, None) => match &ref_event.data {
             Data::String(s) => s.as_bytes().to_vec(),
-            _ => {
-                warn!("Responding with OK unknown data");
-                "OK".as_bytes().to_vec()
-            }
+            _ => "OK".as_bytes().to_vec(),
         },
         (ResponseContent::Text, Some(t)) if !t.is_empty() => t,
         (ResponseContent::Text, Some(_)) => return None,
         (ResponseContent::Bytes, _) => match ref_event.data.to_bytes() {
             Ok(b) => b,
             Err(e) => {
-                warn!("Responding with OK unknown data {e}");
+                warn!("Unable to convert data to bytes {e}");
                 "OK".as_bytes().to_vec()
             }
         },

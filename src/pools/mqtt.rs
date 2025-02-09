@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use log::info;
 use rumqttc::{Client, Connection, MqttOptions};
 
-use crate::config::{MqttConfiguration, PoolId};
+use crate::config::{now, MqttConfiguration, PoolId};
 
 #[derive(Default)]
 pub struct MqttPool {
@@ -14,7 +14,9 @@ pub struct MqttPool {
 impl MqttPool {
     pub fn configure(&mut self, pool_id: PoolId, config: MqttConfiguration) -> Connection {
         let mut mqtt_options = MqttOptions::new(
-            config.client_id.as_ref().unwrap_or(&pool_id),
+            config
+                .client_id
+                .unwrap_or_else(|| format!("{pool_id}-{}", now().timestamp_millis())),
             &config.host,
             config.port,
         );

@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../scheme.json
 
 events:
   5_seconds:

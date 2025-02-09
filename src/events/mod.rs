@@ -16,7 +16,7 @@ pub mod scan_code_read;
 pub mod time;
 
 use command::CommandEvent;
-use core::ops::Deref;
+use core::{fmt::Display, ops::Deref};
 use data::{Data, Metadata};
 use indexmap::{IndexMap, IndexSet};
 use mqtt_unsubscribe::MqttUnsubscribeEvent;
@@ -68,6 +68,30 @@ pub enum EventType {
     Pass,
     #[cfg(target_os = "linux")]
     ScanCodeRead(scan_code_read::ScanCodeReadEvent),
+}
+
+impl Display for EventType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EventType::MqttPublish(_) => write!(f, "mqtt_publish"),
+            EventType::MqttSubscribe(_) => write!(f, "mqtt_publish"),
+            EventType::MqttUnsubscribe(_) => write!(f, "mqtt_unsubscribe"),
+            EventType::Time(_) => write!(f, "time"),
+            EventType::Repeat(_) => write!(f, "time_repeat"),
+            EventType::Period(_) => write!(f, "time_period"),
+            EventType::ApiCall(_) => write!(f, "api_call"),
+            EventType::ApiListen(_) => write!(f, "api_listen"),
+            EventType::FileRead(_) => write!(f, "file_read"),
+            EventType::FileWrite(_) => write!(f, "file_write"),
+            EventType::Watch(_) => write!(f, "watch"),
+            EventType::FileChanged(_) => write!(f, "file_changed"),
+            EventType::Execute(_) => write!(f, "execute"),
+            EventType::Print(_) => write!(f, "print"),
+            EventType::Pass => write!(f, "pass"),
+            #[cfg(target_os = "linux")]
+            EventType::ScanCodeRead(_) => write!(f, "scan_code_read"),
+        }
+    }
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]

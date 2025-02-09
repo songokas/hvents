@@ -11,6 +11,24 @@ use crate::events::data::{Data, Metadata};
 pub fn load_handlebars() -> Handlebars<'static> {
     let mut handlebars = Handlebars::new();
     handlebars.register_helper("date-time-format", Box::new(date_time_helper));
+    #[cfg(feature = "metrics")]
+    handlebars.register_helper(
+        "prometheus_metrics",
+        Box::new(
+            |_: &Helper,
+             _: &Handlebars,
+             _: &Context,
+             _: &mut RenderContext,
+             out: &mut dyn Output|
+             -> HelperResult {
+                let metrics = prometheus::TextEncoder::new()
+                    .encode_to_string(&prometheus::default_registry().gather())
+                    .map_err(|e| RenderErrorReason::Other(e.to_string()))?;
+                out.write(&metrics)?;
+                Ok(())
+            },
+        ),
+    );
     handlebars
 }
 

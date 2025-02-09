@@ -1,6 +1,6 @@
 [package]
 name = "hvents"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2021"
 
 authors = ["Tomas Jakstas <tom.jakstas@gmail.com>"]
@@ -35,10 +35,18 @@ notify = { version = "6.1.1", default-features = false, features = [
     "macos_kqueue",
 ] }
 tiny_http = "0.12"
+metrics = "0.24"
+metrics-prometheus = { version = "0.9", optional = true }
+prometheus = "0.13.4"
 
 [target.'cfg(unix)'.dependencies]
 evdev = { version = "0.12", default-features = false, features = ["serde"] }
 hex = { version = "0.4" }
+
+[features]
+
+metrics = ["metrics-prometheus"]
+default = ["metrics"]
 
 [build-dependencies]
 cargo-deb = "2"
