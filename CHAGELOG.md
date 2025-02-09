@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - evdev wait for device to be available
-- client id randomized when not provided
+- randomize mqtt client id when it is not provided
 
 ## [0.3.1] - 2024-09-07
 

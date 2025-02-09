@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../scheme.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/songokas/hvents/refs/heads/main/scheme.json
 
 events:
   schedule:

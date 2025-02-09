@@ -359,7 +359,7 @@ EOF
 }
 
 
-test() {
+test_all() {
     cargo build
     cargo test
     test_command
@@ -372,4 +372,4 @@ test() {
     test_many_events
 }
 
-"${1:-"test"}"
+"${1:-"test_all"}"
