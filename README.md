@@ -366,11 +366,17 @@ devices needs to be defined globally
 
 ## Template data
 
-Unless otherwise stated per command keys available in templates
+Unless otherwise stated keys available in templates
 
 - data
 - metadata
 - state
+
+Template helpers available
+
+- date-time-format "2022-02-02" "%Y-%m-%d"
+- prometheus_metrics
+- default handlebar helpers
 
 ## Event references and data
 
