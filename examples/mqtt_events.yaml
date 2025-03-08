@@ -11,6 +11,7 @@ events:
     next_event: check_for_poison
 
   resubscribe_snakes:
+    forward:
     state:
       replace:
         poison: "false"
@@ -18,11 +19,13 @@ events:
     next_event: print_out
 
   can_poison_be_removed:
+    forward:
     state:
       count: non_venomous_counter
     next_event_template: '{{#if (eq state.poison "true")}}{{#if (eq state.non_venomous_counter "3")}}resubscribe_snakes{{/if}}{{/if}}'
 
   check_for_poison:
+    forward:
     next_event_template: '{{#if (eq data "taipan")}}unsubscribe_snake{{/if}}'
 
   unsubscribe_snake:

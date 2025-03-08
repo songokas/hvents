@@ -16,7 +16,6 @@ use crate::{
         data::Data,
         EventType, Events, ReferencingEvent,
     },
-    renderer::load_handlebars,
 };
 
 pub fn http_executor(
@@ -24,25 +23,26 @@ pub fn http_executor(
     listen: &str,
     events: &Events,
     queue_tx: Sender<ReferencingEvent>,
+    handlebars: &handlebars::Handlebars,
 ) -> anyhow::Result<()> {
     let server = Server::http(listen)
         .map_err(|e| anyhow!("Http server failed to listen to {listen} {e}"))?;
-    let handlebars = load_handlebars();
 
     for mut request in server.incoming_requests() {
         debug!(
-            "Incoming request method: {}, url: {}, headers: {:?}",
+            "Incoming request method={} url={} headers={:?}",
             request.method(),
             request.url(),
             request.headers()
         );
 
-        counter!("http_requests_total", "method" => request.method().to_string()).increment(1);
+        counter!("hvents.http.server.incoming_requests", "method" => request.method().to_string())
+            .increment(1);
 
         let response = match handle_incoming(
             events,
             &http_queue.lock().expect("http queue locked"),
-            &handlebars,
+            handlebars,
             &mut request,
         ) {
             Some(output) => {
@@ -79,7 +79,9 @@ fn handle_incoming(
         http_events
             .iter()
             .find_map(|ref_event| match &ref_event.event_type {
-                EventType::ApiListen(e) if e.matches(request.url(), request.method().as_str()) => {
+                EventType::ApiListen(e)
+                    if e.matches(request.url(), request.method().as_str(), request.headers()) =>
+                {
                     Some((ref_event, e))
                 }
                 _ => None,
@@ -122,7 +124,7 @@ fn handle_incoming(
         _ => None,
     };
 
-    let mut headers = listen_event.headers.clone();
+    let mut headers = listen_event.response_headers.clone();
     let segments: Vec<&str> = request.url().split('/').filter(|s| !s.is_empty()).collect();
 
     let template_response = if let Some(t) = &listen_event.response_body {
@@ -220,6 +222,7 @@ struct ResponseData {
 mod tests {
     use std::{sync::mpsc::channel, thread::spawn, time::Duration};
 
+    use handlebars::Handlebars;
     use serde_json::json;
 
     use crate::events::{
@@ -261,7 +264,14 @@ mod tests {
                 r#"{{data.listen2}} {{request.time}}"#.to_string().into(),
             ));
             let events = Events::new(events.into_iter().collect());
-            http_executor(queue, "127.0.0.1:13333", &events, queue_tx.clone()).unwrap();
+            http_executor(
+                queue,
+                "127.0.0.1:13333",
+                &events,
+                queue_tx.clone(),
+                &Handlebars::new(),
+            )
+            .unwrap();
         });
 
         let body = reqwest::blocking::get("http://127.0.0.1:13333/clients/listen1")
@@ -315,10 +325,11 @@ mod tests {
         ReferencingEvent {
             event_type: EventType::ApiListen(ApiListenEvent {
                 path: uri.to_string(),
-                headers: Default::default(),
+                response_headers: Default::default(),
                 response_body: template,
                 method: request_method,
                 request_content: RequestContent::Json,
+                request_headers: Default::default(),
                 response_content: ResponseContent::Json,
                 action: Default::default(),
                 pool_id: Default::default(),

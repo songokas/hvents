@@ -1,6 +1,6 @@
 # About
 
-Very simple event automation system to manage home events easily by defining it in a configuration file.
+Very simple event automation system to manage home events easily by defining it in a configuration file
 
 Supports:
 
@@ -17,15 +17,15 @@ Supports:
 amd64
 
 ```
-wget https://github.com/songokas/hvents/releases/download/v0.3.2/hvents_0.3.2_amd64.deb \
-  && sudo apt install ./hvents_0.3.2_amd64.deb
+wget https://github.com/songokas/hvents/releases/download/v0.4.0/hvents_0.4.0_amd64.deb \
+  && sudo apt install ./hvents_0.4.0_amd64.deb
 ```
 
 armhf
 
 ```
-wget https://github.com/songokas/hvents/releases/download/v0.3.2/hvents_0.3.2_armhf.deb \
-  && sudo apt install ./hvents_0.3.2_armhf.deb
+wget https://github.com/songokas/hvents/releases/download/v0.4.0/hvents_0.4.0_armhf.deb \
+  && sudo apt install ./hvents_0.4.0_armhf.deb
 ```
 
 ## Download binary
@@ -129,6 +129,11 @@ location:
 # optional
 devices:
   default: /dev/input/event0
+
+# enable metrics
+# optional
+metrics:
+  instance_id: unique-service-id
 ```
 
 ## Run
@@ -240,6 +245,8 @@ api_call:
   method: get # optional
   # options: json,text,bytes
   request_content: json # optional
+  # request body template to be rendered
+  request_body: "{{client_id}}" #optional (event.data is used if not provided)
   # options: json,text,bytes
   response_content: json # optional
 ```
@@ -257,6 +264,12 @@ api_listen:
   method: get # optional
   # options: json,text,bytes
   request_content: json # optional
+  # expected request headers (must match at least one of the array item fully)
+  # optional
+  request_headers:
+    - Authorization: Basic 3amd
+      Test: 1
+    - Authorization: Basic 3mdk
   # options: json,text,bytes
   response_content: json # optional
   # response template to be rendered
@@ -374,9 +387,11 @@ Unless otherwise stated keys available in templates
 
 Template helpers available
 
-- date-time-format "2022-02-02" "%Y-%m-%d"
-- prometheus_metrics
-- default handlebar helpers
+{{date-time-format "2022-02-02" "%Y-%m-%d"}} - format date and time
+
+{{otlp-metrics 600}} - output metrics that changed <= 600 seconds ago
+
+default handlebar helpers
 
 ## Event references and data
 
@@ -387,7 +402,7 @@ example:
 
 ```yaml
 subscribe:
-  mqtt_subsribe:
+  mqtt_subscribe:
     topic: weather/data
     body_contains: "forecast"
   next_event: schedule_writing
@@ -410,80 +425,4 @@ schedule_writing_datawrite_to_file_data
 
 ## Event examples
 
-```yaml
-# events/hall.yaml
-movement:
-  mqtt_subscribe:
-    topic: security/hall/movement
-    body: "True"
-  next_event: schedule_light_on
-
-schedule_light_on:
-  period:
-    from: 23:00
-    to: 05:00
-  next_event: light_on
-
-schedule_light_off:
-  time: in 20 seconds
-  next_event: light_off
-
-light_on:
-  mqtt_publish:
-    topic: cmnd/hall/Power
-    body: on
-  next_event: schedule_light_off
-
-light_off:
-  mqtt_publish:
-    topic: cmnd/hall/Power
-    body: off
-```
-
-```yaml
-# events/weather.yaml
-schedule:
-  time: 07:59
-  next_event: retrieve
-retrieve:
-  api_call:
-    url: https://api.meteo.lt/v1/places/vilnius/forecasts/long-term
-  next_event: store_file
-store_file:
-  file_write: events/data.json
-  next_event: announce
-announce_8:
-  time: 8:00
-  next_event: announce_from_file
-  data: { "forecastToShow": "today 8:00:00" }
-announce_from_file:
-  file_read:
-    file: events/data.json
-  next_event: announce
-announce:
-  mqtt_publish:
-    topic: announce/weather
-    body: '{{#each forecastTimestamps}}{{#if (eq forecastTimeUtc (date-time-format ../forecastToShow "%Y-%m-%d %H:%M:%S"))}}Air temperature {{airTemperature}} degrees{{/if}}{{/each}}'
-```
-
-```yaml
-# events/doors.yaml
-door_front_open:
-  mqtt_subscribe:
-    topic: security/front-door/open
-    body: "True"
-  next_event: announce_front
-door_back_open:
-  mqtt_subscribe:
-    topic: security/back-door/open
-    body: "True"
-  next_event: announce_back
-door_announce_front:
-  mqtt_publish:
-    topic: announce/front-door
-    body: front door open
-door_announce_back:
-  mqtt_publish:
-    topic: announce/back-door
-    body: back door open
-```
+[examples](examples)

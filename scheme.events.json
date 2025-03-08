@@ -151,11 +151,20 @@
                                 "delete"
                             ]
                         },
+                        "request_headers": {
+                            "type": "array",
+                            "items": {
+                                "type": "object"
+                            }
+                        },
                         "request_content": {
                             "$ref": "#/$defs/content_type"
                         },
                         "response_content": {
                             "$ref": "#/$defs/content_type"
+                        },
+                        "response_headers": {
+                            "type": "object"
                         },
                         "response_body": {
                             "type": "string"
@@ -227,6 +236,7 @@
                         "path"
                     ]
                 },
+                "forward": {},
                 "print": {
                     "enum": [
                         "stderr",

@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail, Context};
 use clap::{Parser, ValueHint};
 use core::time::Duration;
 use env_logger::Env;
-use hvents::config::{init_location, ClientConfiguration, Config, PoolId};
+use hvents::config::{init_location, now, ClientConfiguration, Config, PoolId};
 use hvents::database::{self, KeyValueStore};
 use hvents::events::api_listen::HttpQueue;
 use hvents::events::{EventMap, EventName, EventType, Events, NextEvent, ReferencingEvent};
@@ -14,6 +14,7 @@ use hvents::executors::time::timed_executor;
 use hvents::pools::api::ClientPool;
 use hvents::pools::http::HttpQueuePool;
 use hvents::pools::mqtt::MqttPool;
+use hvents::renderer::load_handlebars;
 use indexmap::IndexMap;
 use log::{debug, info};
 use metrics::gauge;
@@ -43,7 +44,12 @@ fn main() -> Result<(), anyhow::Error> {
         .with_context(|| anyhow!("Unable to load main {} file", args.config.to_string_lossy()))?;
     let config: Config = serde_yaml::from_reader(f)?;
     #[cfg(feature = "metrics")]
-    let _recorder = metrics_prometheus::install();
+    let recorder = if let Some(m) = config.metrics {
+        otlp_metrics_exporter::install_recorder(m.service_name, m.service_version, m.instance_id)
+            .into()
+    } else {
+        None
+    };
     if let Some(l) = &config.location {
         init_location(l.latitude, l.longitude);
     }
@@ -74,9 +80,16 @@ fn main() -> Result<(), anyhow::Error> {
     let events = events.merge(config.events);
 
     info!("Loaded {} events", events.len());
-    gauge!("loaded_events_total").set(events.len() as f64);
+    gauge!("hvents.queue.loaded_events").set(events.len() as f64);
 
     validate_events(&events, &config.start_with, &config.http, &config.devices)?;
+
+    #[allow(unused_mut)]
+    let mut handlebars = load_handlebars();
+    #[cfg(feature = "metrics")]
+    if let Some(r) = recorder {
+        hvents::renderer::add_metrics(&mut handlebars, r);
+    }
 
     let (queue_tx, queue_rx) = mpsc::channel();
     let (timer_tx, timer_rx) = mpsc::channel();
@@ -153,7 +166,9 @@ fn main() -> Result<(), anyhow::Error> {
             let http_queue = HttpQueue::default();
             let pool_queue = http_queue.clone();
             http_queue_pool.configure(pool_id.clone(), pool_queue)?;
-            let h = s.spawn(|| http_executor(http_queue, listen, &events, queue_tx.clone()));
+            let h = s.spawn(|| {
+                http_executor(http_queue, listen, &events, queue_tx.clone(), &handlebars)
+            });
             http_handles.push(h);
             handle_count += 1;
         }
@@ -169,14 +184,20 @@ fn main() -> Result<(), anyhow::Error> {
                 mqtt_client_pool,
                 request_client_pool,
                 http_queue_pool,
+                &handlebars,
             )
         });
 
         let mut time_events = IndexMap::new();
         for ref_event in events.iter().filter(|e| e.time_event().is_some()) {
-            if let Some(timer_event) = database.get::<ReferencingEvent>(ref_event.event_id()) {
+            let timer_event = database.get::<ReferencingEvent>(ref_event.event_id());
+            if let Some(false) = timer_event
+                .as_ref()
+                .and_then(|r| r.time_event())
+                .map(|t| t.expired(now()))
+            {
                 debug!("Restore event {}", ref_event.event_id());
-                time_events.insert(ref_event.event_id(), timer_event);
+                time_events.insert(ref_event.event_id(), timer_event.expect("time event"));
             }
         }
         for name in config.start_with.iter() {
@@ -196,7 +217,7 @@ fn main() -> Result<(), anyhow::Error> {
         let _timer_handle =
             s.spawn(|| timed_executor(&events, time_events, timer_rx, queue_tx.clone(), database));
         handle_count += 1;
-        gauge!("executors_total").set(handle_count);
+        debug!("Executor count {handle_count}");
         Ok(())
     })
 }

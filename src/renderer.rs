@@ -11,25 +11,39 @@ use crate::events::data::{Data, Metadata};
 pub fn load_handlebars() -> Handlebars<'static> {
     let mut handlebars = Handlebars::new();
     handlebars.register_helper("date-time-format", Box::new(date_time_helper));
-    #[cfg(feature = "metrics")]
+    handlebars
+}
+
+#[cfg(feature = "metrics")]
+pub fn add_metrics(
+    handlebars: &mut Handlebars<'static>,
+    recorder: std::sync::Arc<otlp_metrics_exporter::otlp_recorder::OtlpRecorder>,
+) {
+    use core::time::Duration;
+
     handlebars.register_helper(
-        "prometheus_metrics",
+        "otlp-metrics",
         Box::new(
-            |_: &Helper,
-             _: &Handlebars,
-             _: &Context,
-             _: &mut RenderContext,
-             out: &mut dyn Output|
-             -> HelperResult {
-                let metrics = prometheus::TextEncoder::new()
-                    .encode_to_string(&prometheus::default_registry().gather())
-                    .map_err(|e| RenderErrorReason::Other(e.to_string()))?;
-                out.write(&metrics)?;
+            move |h: &Helper,
+                  _: &Handlebars,
+                  _: &Context,
+                  _: &mut RenderContext,
+                  out: &mut dyn Output|
+                  -> HelperResult {
+                let period = h
+                    .param(0)
+                    .map(|p| {
+                        p.value()
+                            .as_u64()
+                            .ok_or(RenderErrorReason::InvalidParamType("number"))
+                    })
+                    .transpose()?
+                    .map(Duration::from_secs);
+                out.write(&recorder.to_json(period))?;
                 Ok(())
             },
         ),
     );
-    handlebars
 }
 
 #[derive(Serialize)]

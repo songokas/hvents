@@ -36,7 +36,7 @@ use mqtt_subscribe::MqttSubscribeEvent;
 
 use self::{api_call::ApiCallEvent, time::TimeEvent};
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EventType {
     #[serde(deserialize_with = "deserialize_mqtt_publish_event")]
@@ -64,8 +64,7 @@ pub enum EventType {
     FileChanged(FileChangedEvent),
     Execute(CommandEvent),
     Print(PrintEvent),
-    #[default]
-    Pass,
+    Forward,
     #[cfg(target_os = "linux")]
     ScanCodeRead(scan_code_read::ScanCodeReadEvent),
 }
@@ -87,14 +86,14 @@ impl Display for EventType {
             EventType::FileChanged(_) => write!(f, "file_changed"),
             EventType::Execute(_) => write!(f, "execute"),
             EventType::Print(_) => write!(f, "print"),
-            EventType::Pass => write!(f, "pass"),
+            EventType::Forward => write!(f, "pass"),
             #[cfg(target_os = "linux")]
             EventType::ScanCodeRead(_) => write!(f, "scan_code_read"),
         }
     }
 }
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReferencingEvent {
     #[serde(default)]
     pub name: EventName,
@@ -110,6 +109,21 @@ pub struct ReferencingEvent {
     pub data: Data,
     #[serde(default)]
     pub merge_data: MergePolicy,
+}
+
+#[cfg(test)]
+impl Default for ReferencingEvent {
+    fn default() -> Self {
+        Self {
+            name: Default::default(),
+            event_type: EventType::Forward,
+            next_event: Default::default(),
+            metadata: Default::default(),
+            state: Default::default(),
+            data: Default::default(),
+            merge_data: Default::default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -182,6 +196,18 @@ impl ReferencingEvent {
             None
         }
     }
+
+    fn generated(name: &str, template: String) -> ReferencingEvent {
+        Self {
+            name: format!("generated_from_{}", name),
+            next_event: NextEvent::Template(template).into(),
+            event_type: EventType::Forward,
+            metadata: Default::default(),
+            state: Default::default(),
+            data: Default::default(),
+            merge_data: Default::default(),
+        }
+    }
 }
 
 impl Eq for ReferencingEvent {}
@@ -220,12 +246,9 @@ impl Events {
         // generate a new pass event since next event is unknown and only event executor
         // knows how to handle it
         match &event.next_event {
-            Some(NextEvent::Template(s)) => ReferencingEvent {
-                name: format!("generated_from_{}", event.name),
-                next_event: NextEvent::Template(s.clone()).into(),
-                ..Default::default()
+            Some(NextEvent::Template(s)) => {
+                ReferencingEvent::generated(&event.name, s.clone()).into()
             }
-            .into(),
             Some(NextEvent::Name(s)) => self.0.get(s.as_str()).cloned(),
             None => None,
         }
@@ -340,10 +363,12 @@ where
     D: de::Deserializer<'de>,
 {
     let s: Option<EventType> = de::Deserialize::deserialize(deserializer)?;
-    Ok(match s {
-        Some(e) => e,
-        None => EventType::Pass,
-    })
+    match s {
+        Some(e) => Ok(e),
+        None => Err(de::Error::custom(
+            "unknown event type or invalid fields provided",
+        )),
+    }
 }
 
 fn deserialize_mqtt_publish_event<'de, D>(deserializer: D) -> Result<MqttPublishEvent, D::Error>
@@ -495,10 +520,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_deserialize_no_event_type() {
+    fn test_deserialize_pass_event_type() {
         let expected = ReferencingEvent {
             name: "test1".to_string(),
-            event_type: EventType::Pass,
+            event_type: EventType::Forward,
             next_event: NextEvent::Name("test2".to_string()).into(),
             metadata: json!({"meta1":"metavalue1"}).into(),
             state: StateData {
@@ -510,6 +535,7 @@ mod tests {
             merge_data: MergePolicy::Overwrite,
         };
         let yaml = r#"
+                forward:
                 name: test1
                 next_event: test2
                 metadata:
@@ -556,5 +582,20 @@ mod tests {
         "#;
         let event: ReferencingEvent = serde_yaml::from_str(yaml).unwrap();
         assert_eq!(event, expected);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_deserialize_error() {
+        let yaml = r#"
+name: test1
+api_call:
+endpoint: http://servas.lan:9090/api/v1/otlp/v1/metrics
+headers:
+    Authorization: "Basic as"
+request_content: json
+request_body: "{{otlp-metrics}}"
+        "#;
+        let _event: ReferencingEvent = serde_yaml::from_str(yaml).unwrap();
     }
 }

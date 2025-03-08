@@ -18,7 +18,7 @@ use crate::{
         EventType, Events, NextEvent, ReferencingEvent,
     },
     pools::{api::ClientPool, http::HttpQueuePool, mqtt::MqttPool},
-    renderer::{load_handlebars, TemplateData},
+    renderer::TemplateData,
 };
 
 #[allow(clippy::too_many_arguments)]
@@ -31,8 +31,8 @@ pub fn event_executor(
     mqtt_pool: MqttPool,
     client_pool: ClientPool,
     http_queue_pool: HttpQueuePool,
+    handlebars: &handlebars::Handlebars,
 ) -> Result<(), anyhow::Error> {
-    let handlebars = load_handlebars();
     let mut state: IndexMap<String, String> = IndexMap::new();
     let send_next_event = |data: Data, metadata: Metadata, next_event_name: Option<String>| {
         let Some(ref_event) = next_event_name else {
@@ -47,7 +47,7 @@ pub fn event_executor(
     };
     scope(|thread_scope| {
         'main: for mut received in queue_rx {
-            counter!("received_events_total", "event_type" => received.event_type.to_string())
+            counter!("hvents.queue.received_events", "event_type" => received.event_type.to_string())
                 .increment(1);
 
             if let Some(key) = received.state.as_ref().and_then(|s| s.count.as_deref()) {
@@ -158,6 +158,7 @@ pub fn event_executor(
                             info!("Empty body provided for topic={}. Ignoring", topic);
                             continue;
                         }
+                        counter!("hvents.mqtt.client.sent.messages").increment(1);
                         debug!("Publish to topic={topic} body={payload:?}");
                         if let Err(e) = c.try_publish(&topic, QoS::AtLeastOnce, e.retain, payload) {
                             error!("Failed to publish topic={topic} {e}");
@@ -189,7 +190,8 @@ pub fn event_executor(
                             }
                         }
 
-                        counter!("api_calls_total", "method" => e.method.to_string()).increment(1);
+                        counter!("hvents.http.client.sent.requests", "method" => e.method.to_string())
+                            .increment(1);
 
                         let result = Builder::new()
                             .name(format!("api_call {}", e.url))
@@ -334,7 +336,8 @@ pub fn event_executor(
                         };
                     }
 
-                    counter!("commands_total", "command" => c.command.to_string()).increment(1);
+                    counter!("hvents.command.executed", "command" => c.command.to_string())
+                        .increment(1);
 
                     let result = Builder::new()
                         .name(format!("command {}", c.command))
@@ -353,7 +356,7 @@ pub fn event_executor(
                     continue;
                 }
                 EventType::Print(e) => e.run(&received.data),
-                EventType::Pass => (),
+                EventType::Forward => (),
                 // events begin in evdev executor
                 #[cfg(target_os = "linux")]
                 EventType::ScanCodeRead(_) => continue,
@@ -371,6 +374,7 @@ mod tests {
     use core::time::Duration;
     use std::{sync::mpsc::channel, thread::spawn};
 
+    use handlebars::Handlebars;
     use serde_json::{json, Value};
 
     use crate::events::{
@@ -444,6 +448,7 @@ mod tests {
                 MqttPool::default(),
                 ClientPool::default(),
                 HttpQueuePool::default(),
+                &Handlebars::new(),
             )
             .unwrap();
         });
@@ -519,6 +524,7 @@ mod tests {
                 MqttPool::default(),
                 ClientPool::default(),
                 HttpQueuePool::default(),
+                &Handlebars::new(),
             )
             .unwrap();
         });

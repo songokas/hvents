@@ -1,6 +1,6 @@
 [package]
 name = "hvents"
-version = "0.3.2"
+version = "0.4.0"
 edition = "2021"
 
 authors = ["Tomas Jakstas <tom.jakstas@gmail.com>"]
@@ -36,8 +36,7 @@ notify = { version = "6.1.1", default-features = false, features = [
 ] }
 tiny_http = "0.12"
 metrics = "0.24"
-metrics-prometheus = { version = "0.9", optional = true }
-prometheus = "0.13.4"
+otlp-metrics-exporter = { version = "0.1", optional = true }
 
 [target.'cfg(unix)'.dependencies]
 evdev = { version = "0.12", default-features = false, features = ["serde"] }
@@ -45,7 +44,7 @@ hex = { version = "0.4" }
 
 [features]
 
-metrics = ["metrics-prometheus"]
+metrics = ["otlp-metrics-exporter"]
 default = ["metrics"]
 
 [build-dependencies]

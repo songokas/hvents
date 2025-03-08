@@ -35,7 +35,7 @@ pub fn evdev_executor(
         for event in device.fetch_events()? {
             match event.kind() {
                 InputEventKind::Misc(MiscType::MSC_SCAN) => {
-                    counter!("evdev_events_total").increment(1);
+                    counter!("hvents.evdev.incoming_events").increment(1);
                     debug!("Msc scan event {}", event.value());
                     if let Some(e) = handle_incoming_scan_code(events, event.value()) {
                         queue_tx.send(e)?;

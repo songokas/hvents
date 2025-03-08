@@ -113,3 +113,8 @@ start_with:
 # optional
 # http:
 #   default: "0.0.0.0:9022"
+
+# enable metrics
+# optional
+# metrics:
+#   instance_id: unique-service-id

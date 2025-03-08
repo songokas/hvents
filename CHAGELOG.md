@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-03-06
+
+### Changed
+
+- dependencies updated
+- using otlp format for metrics
+- templates can use otlp-metrics helper to render metrics
+- api_listen event can match on provided request_headers
+- api_listen event can provide response_headers
+
+### Fixed
+
+- resubscribe to topics on reconnect
+- do not load expired events from filesystem
+
 ## [0.3.2] - 2025-02-08
 
 ### Added

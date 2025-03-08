@@ -26,7 +26,7 @@ pub fn timed_executor<'a>(
     loop {
         delay_events.retain(|_, d| d.elapsed() <= COOL_DOWN_DURATION);
         for time_event in timer_rx.try_iter() {
-            counter!("time_events_total", "event_type" => time_event.event_type.to_string())
+            counter!("hvents.scheduler.incoming_events", "event_type" => time_event.event_type.to_string())
                 .increment(1);
 
             let event_id = events
@@ -48,7 +48,7 @@ pub fn timed_executor<'a>(
             }
         }
 
-        gauge!("time_events").set(events_to_execute.len() as f64);
+        gauge!("hvents.scheduler.queue").set(events_to_execute.len() as f64);
 
         let now = now();
         let next_events_to_execute: Vec<(&str, ReferencingEvent)> = events_to_execute

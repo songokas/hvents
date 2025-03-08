@@ -20,6 +20,7 @@ pub fn file_changed_executor(
     for event in file_rx {
         match event {
             Ok(event) => {
+                counter!("hvents.filesystem.incoming_events").increment(1);
                 // debug!("Received event {event:?}");
                 let watch_kind = match event.kind {
                     EventKind::Create(CreateKind::Any | CreateKind::File) => WatchKind::Created,
@@ -27,7 +28,7 @@ pub fn file_changed_executor(
                     EventKind::Remove(RemoveKind::Any | RemoveKind::File) => WatchKind::Removed,
                     _ => continue,
                 };
-                counter!("files_changed_total").increment(1);
+
                 let Some(path) = event.paths.first() else {
                     warn!("No paths are provided for event");
                     continue;
@@ -37,6 +38,7 @@ pub fn file_changed_executor(
                 }
             }
             Err(e) => {
+                counter!("hvents.filesystem.errors").increment(1);
                 error!("File changed error: {:?}", e);
             }
         }

@@ -1,4 +1,5 @@
-use std::sync::mpsc::Sender;
+use core::time::Duration;
+use std::{sync::mpsc::Sender, thread::sleep};
 
 use log::{debug, error};
 use metrics::counter;
@@ -16,23 +17,33 @@ pub fn mqtt_executor(
     for notification in connection.iter() {
         match notification {
             Ok(Event::Incoming(Incoming::Publish(packet))) => {
-                counter!("mqtt_publish_total").increment(1);
-                show_error = true;
+                counter!("hvents.mqtt.client.consumed.messages").increment(1);
                 debug!("Incoming mqtt event {} {:?}", packet.topic, packet.payload);
+                show_error = true;
+
                 if let Some(e) = handle_incoming(events, &packet.topic, &packet.payload) {
                     queue_tx.send(e)?;
                 }
             }
+            // resubscribe all events on reconnect
+            // TODO handle unsubscribes
+            Ok(Event::Incoming(Incoming::ConnAck(_))) if !show_error => {
+                for event in events
+                    .iter()
+                    .filter(|r| matches!(&r.event_type, EventType::MqttSubscribe(_)))
+                {
+                    queue_tx.send(event.clone())?;
+                }
+            }
             Ok(_e) => {
-                // debug!("Event {_e:?}");
-                // show_error = true;
                 continue;
             }
             Err(e) => {
-                counter!("mqtt.errors").increment(1);
+                counter!("hvents.mqtt.client.errors").increment(1);
                 if show_error {
-                    error!("Receive mqtt error {e}. Suppressing further messages until success");
+                    error!("Received mqtt error {e}. Suppressing further messages until success");
                 }
+                sleep(Duration::from_millis(200));
                 show_error = false;
             }
         };

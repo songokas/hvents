@@ -31,7 +31,27 @@ pub struct Config {
     /// pool id is currently not used for devices
     #[serde(default)]
     pub devices: IndexMap<PoolId, PathBuf>,
+    #[serde(default)]
+    pub metrics: Option<MetricsConfig>,
 }
+
+#[derive(Deserialize)]
+pub struct MetricsConfig {
+    pub instance_id: String,
+    #[serde(default = "service_name")]
+    pub service_name: String,
+    #[serde(default = "service_version")]
+    pub service_version: String,
+}
+
+fn service_name() -> String {
+    env!("CARGO_PKG_NAME").to_string()
+}
+
+fn service_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
 #[derive(Deserialize)]
 pub struct Location {
     pub latitude: f64,

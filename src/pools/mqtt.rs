@@ -30,7 +30,7 @@ impl MqttPool {
 
         let (client, connection) = Client::new(mqtt_options, 10);
 
-        info!("Connected to {}", config.host);
+        info!("Mqtt connect to {}", config.host);
 
         self.clients.insert(pool_id, client);
         connection
