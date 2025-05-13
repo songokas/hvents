@@ -13,7 +13,7 @@ pub mod mqtt_subscribe;
 pub mod mqtt_unsubscribe;
 pub mod period;
 pub mod print;
-#[cfg(feature = "evdev")]
+#[cfg(all(unix, feature = "evdev"))]
 pub mod scan_code_read;
 pub mod time;
 
@@ -81,7 +81,7 @@ pub enum EventType {
     Execute(CommandEvent),
     Print(PrintEvent),
     Forward,
-    #[cfg(feature = "evdev")]
+    #[cfg(all(unix, feature = "evdev"))]
     ScanCodeRead(scan_code_read::ScanCodeReadEvent),
 }
 
@@ -110,7 +110,7 @@ impl Display for EventType {
             EventType::Execute(_) => write!(f, "execute"),
             EventType::Print(_) => write!(f, "print"),
             EventType::Forward => write!(f, "pass"),
-            #[cfg(feature = "evdev")]
+            #[cfg(all(unix, feature = "evdev"))]
             EventType::ScanCodeRead(_) => write!(f, "scan_code_read"),
         }
     }

@@ -1,4 +1,4 @@
-#[cfg(feature = "evdev")]
+#[cfg(all(unix, feature = "evdev"))]
 pub mod evdev;
 #[cfg(feature = "notify")]
 pub mod file;

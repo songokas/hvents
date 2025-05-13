@@ -31,9 +31,9 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::{sync::mpsc, thread};
 
-#[cfg(feature = "evdev")]
+#[cfg(all(unix, feature = "evdev"))]
 use hvents::executors::evdev::evdev_executor;
-#[cfg(feature = "evdev")]
+#[cfg(all(unix, feature = "evdev"))]
 use log::error;
 
 #[derive(Parser)]
@@ -153,9 +153,9 @@ fn main() -> Result<(), anyhow::Error> {
             handle_count += 1;
         }
 
-        #[cfg(feature = "evdev")]
+        #[cfg(all(unix, feature = "evdev"))]
         let mut device_handles = Vec::new();
-        #[cfg(feature = "evdev")]
+        #[cfg(all(unix, feature = "evdev"))]
         for (_, device_path) in config.devices {
             let queue_tx = queue_tx.clone();
             let h = s.spawn(|| {
@@ -296,7 +296,7 @@ fn validate_events(
 
     // validate scan codes
     if devices.is_empty() {
-        #[cfg(feature = "evdev")]
+        #[cfg(all(unix, feature = "evdev"))]
         if let Some(e) = events
             .iter()
             .find(|e| matches!(e.event_type, EventType::ScanCodeRead(_)))

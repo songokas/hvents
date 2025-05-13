@@ -390,7 +390,7 @@ pub fn event_executor(
                 EventType::Print(e) => e.run(&received.data),
                 EventType::Forward => (),
                 // events begin in evdev executor
-                #[cfg(feature = "evdev")]
+                #[cfg(all(unix, feature = "evdev"))]
                 EventType::ScanCodeRead(_) => continue,
             }
 

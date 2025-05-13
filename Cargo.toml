@@ -44,6 +44,7 @@ evdev = { version = "0.12", default-features = false, features = [
 ], optional = true }
 hex = { version = "0.4" }
 
+
 [features]
 
 metrics = ["otlp-metrics-exporter"]
