@@ -1,4 +1,6 @@
+#[cfg(feature = "reqwest")]
 pub mod api_call;
+#[cfg(feature = "tiny_http")]
 pub mod api_listen;
 pub mod command;
 pub mod data;
@@ -11,7 +13,7 @@ pub mod mqtt_subscribe;
 pub mod mqtt_unsubscribe;
 pub mod period;
 pub mod print;
-#[cfg(target_os = "linux")]
+#[cfg(feature = "evdev")]
 pub mod scan_code_read;
 pub mod time;
 
@@ -19,30 +21,40 @@ use command::CommandEvent;
 use core::{fmt::Display, ops::Deref};
 use data::{Data, Metadata};
 use indexmap::{IndexMap, IndexSet};
+#[cfg(feature = "rumqttc")]
 use mqtt_unsubscribe::MqttUnsubscribeEvent;
 use period::PeriodEvent;
 use print::PrintEvent;
 use serde::{de, Deserialize, Serialize};
 use std::{borrow::Borrow, hash::Hash, path::PathBuf};
-use time::{str_to_time, ExecuteTime};
+use time::{str_to_time, ExecuteTime, TimeEvent};
 
+#[cfg(feature = "tiny_http")]
 use api_listen::ApiListenEvent;
+#[cfg(feature = "notify")]
 use file_changed::FileChangedEvent;
 use file_read::FileReadEvent;
+#[cfg(feature = "notify")]
 use file_watch::WatchEvent;
 use file_write::FileWriteEvent;
+#[cfg(feature = "rumqttc")]
 use mqtt_publish::MqttPublishEvent;
+#[cfg(feature = "rumqttc")]
 use mqtt_subscribe::MqttSubscribeEvent;
 
-use self::{api_call::ApiCallEvent, time::TimeEvent};
+#[cfg(feature = "reqwest")]
+use api_call::ApiCallEvent;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EventType {
+    #[cfg(feature = "rumqttc")]
     #[serde(deserialize_with = "deserialize_mqtt_publish_event")]
     MqttPublish(MqttPublishEvent),
+    #[cfg(feature = "rumqttc")]
     #[serde(deserialize_with = "deserialize_mqtt_subscribe_event")]
     MqttSubscribe(MqttSubscribeEvent),
+    #[cfg(feature = "rumqttc")]
     #[serde(deserialize_with = "deserialize_mqtt_unsubscribe_event")]
     MqttUnsubscribe(MqttUnsubscribeEvent),
     #[serde(deserialize_with = "deserialize_time_event")]
@@ -50,44 +62,55 @@ pub enum EventType {
     #[serde(deserialize_with = "deserialize_time_event")]
     Repeat(TimeEvent),
     Period(PeriodEvent),
+    #[cfg(feature = "reqwest")]
     #[serde(deserialize_with = "deserialize_api_call_event")]
     ApiCall(ApiCallEvent),
+    #[cfg(feature = "tiny_http")]
     #[serde(deserialize_with = "deserialize_api_listen_event")]
     ApiListen(ApiListenEvent),
     #[serde(deserialize_with = "deserialize_file_read_event")]
     FileRead(FileReadEvent),
     #[serde(deserialize_with = "deserialize_file_write_event")]
     FileWrite(FileWriteEvent),
+    #[cfg(feature = "notify")]
     #[serde(deserialize_with = "deserialize_watch_event")]
     Watch(WatchEvent),
+    #[cfg(feature = "notify")]
     #[serde(deserialize_with = "deserialize_file_changed_event")]
     FileChanged(FileChangedEvent),
     Execute(CommandEvent),
     Print(PrintEvent),
     Forward,
-    #[cfg(target_os = "linux")]
+    #[cfg(feature = "evdev")]
     ScanCodeRead(scan_code_read::ScanCodeReadEvent),
 }
 
 impl Display for EventType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            #[cfg(feature = "rumqttc")]
             EventType::MqttPublish(_) => write!(f, "mqtt_publish"),
+            #[cfg(feature = "rumqttc")]
             EventType::MqttSubscribe(_) => write!(f, "mqtt_publish"),
+            #[cfg(feature = "rumqttc")]
             EventType::MqttUnsubscribe(_) => write!(f, "mqtt_unsubscribe"),
             EventType::Time(_) => write!(f, "time"),
             EventType::Repeat(_) => write!(f, "time_repeat"),
             EventType::Period(_) => write!(f, "time_period"),
+            #[cfg(feature = "reqwest")]
             EventType::ApiCall(_) => write!(f, "api_call"),
+            #[cfg(feature = "tiny_http")]
             EventType::ApiListen(_) => write!(f, "api_listen"),
             EventType::FileRead(_) => write!(f, "file_read"),
             EventType::FileWrite(_) => write!(f, "file_write"),
+            #[cfg(feature = "notify")]
             EventType::Watch(_) => write!(f, "watch"),
+            #[cfg(feature = "notify")]
             EventType::FileChanged(_) => write!(f, "file_changed"),
             EventType::Execute(_) => write!(f, "execute"),
             EventType::Print(_) => write!(f, "print"),
             EventType::Forward => write!(f, "pass"),
-            #[cfg(target_os = "linux")]
+            #[cfg(feature = "evdev")]
             EventType::ScanCodeRead(_) => write!(f, "scan_code_read"),
         }
     }
@@ -371,6 +394,7 @@ where
     }
 }
 
+#[cfg(feature = "rumqttc")]
 fn deserialize_mqtt_publish_event<'de, D>(deserializer: D) -> Result<MqttPublishEvent, D::Error>
 where
     D: de::Deserializer<'de>,
@@ -391,6 +415,7 @@ where
     }
 }
 
+#[cfg(feature = "rumqttc")]
 fn deserialize_mqtt_subscribe_event<'de, D>(deserializer: D) -> Result<MqttSubscribeEvent, D::Error>
 where
     D: de::Deserializer<'de>,
@@ -411,6 +436,7 @@ where
     }
 }
 
+#[cfg(feature = "rumqttc")]
 fn deserialize_mqtt_unsubscribe_event<'de, D>(
     deserializer: D,
 ) -> Result<MqttUnsubscribeEvent, D::Error>
@@ -433,6 +459,7 @@ where
     }
 }
 
+#[cfg(feature = "notify")]
 fn deserialize_watch_event<'de, D>(deserializer: D) -> Result<WatchEvent, D::Error>
 where
     D: de::Deserializer<'de>,
@@ -453,6 +480,7 @@ where
     }
 }
 
+#[cfg(feature = "notify")]
 fn deserialize_file_changed_event<'de, D>(deserializer: D) -> Result<FileChangedEvent, D::Error>
 where
     D: de::Deserializer<'de>,
@@ -473,6 +501,7 @@ where
     }
 }
 
+#[cfg(feature = "tiny_http")]
 fn deserialize_api_listen_event<'de, D>(deserializer: D) -> Result<ApiListenEvent, D::Error>
 where
     D: de::Deserializer<'de>,
@@ -493,6 +522,7 @@ where
     }
 }
 
+#[cfg(feature = "reqwest")]
 fn deserialize_api_call_event<'de, D>(deserializer: D) -> Result<ApiCallEvent, D::Error>
 where
     D: de::Deserializer<'de>,

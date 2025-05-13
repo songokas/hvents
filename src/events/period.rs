@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use chrono::{DateTime, Local};
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
 use crate::events::time::str_to_time;
@@ -18,7 +18,7 @@ impl PeriodEvent {
         Self(period)
     }
 
-    pub fn is_within_period(&self, now: DateTime<Local>) -> bool {
+    pub fn is_within_period(&self, now: NaiveDateTime) -> bool {
         self.0.matches(now)
     }
 
@@ -26,6 +26,14 @@ impl PeriodEvent {
         self.0.from = self.0.from.reset();
         self.0.to = self.0.to.reset();
         self
+    }
+
+    pub fn from(&self) -> &ExecuteTime {
+        &self.0.from
+    }
+
+    pub fn to(&self) -> &ExecuteTime {
+        &self.0.to
     }
 }
 
@@ -38,7 +46,7 @@ pub struct ExecutionPeriod {
 }
 
 impl ExecutionPeriod {
-    pub fn matches(&self, now: DateTime<Local>) -> bool {
+    pub fn matches(&self, now: NaiveDateTime) -> bool {
         // for time when its less than from
         if matches!((&self.from, &self.to), (ExecuteTime::Time(f), ExecuteTime::Time(t)) if f > t) {
             self.from.lte(now) || self.to.gt(now)
@@ -67,56 +75,56 @@ mod tests {
                 "22:00",
                 "23:00",
                 now()
-                    .with_time(NaiveTime::from_hms_opt(22, 0, 0).unwrap())
-                    .unwrap(),
+                    .date()
+                    .and_time(NaiveTime::from_hms_opt(22, 0, 0).unwrap()),
                 true,
             ),
             (
                 "22:00",
                 "23:00",
                 now()
-                    .with_time(NaiveTime::from_hms_opt(22, 59, 59).unwrap())
-                    .unwrap(),
+                    .date()
+                    .and_time(NaiveTime::from_hms_opt(22, 59, 59).unwrap()),
                 true,
             ),
             (
                 "22:00",
                 "3:00",
                 now()
-                    .with_time(NaiveTime::from_hms_opt(22, 0, 0).unwrap())
-                    .unwrap(),
+                    .date()
+                    .and_time(NaiveTime::from_hms_opt(22, 0, 0).unwrap()),
                 true,
             ),
             (
                 "22:00",
                 "3:00",
                 now()
-                    .with_time(NaiveTime::from_hms_opt(2, 59, 59).unwrap())
-                    .unwrap(),
+                    .date()
+                    .and_time(NaiveTime::from_hms_opt(2, 59, 59).unwrap()),
                 true,
             ),
             (
                 "22:00",
                 "3:00",
                 now()
-                    .with_time(NaiveTime::from_hms_opt(3, 0, 0).unwrap())
-                    .unwrap(),
+                    .date()
+                    .and_time(NaiveTime::from_hms_opt(3, 0, 0).unwrap()),
                 false,
             ),
             (
                 "22:00",
                 "3:00",
                 now()
-                    .with_time(NaiveTime::from_hms_opt(21, 59, 59).unwrap())
-                    .unwrap(),
+                    .date()
+                    .and_time(NaiveTime::from_hms_opt(21, 59, 59).unwrap()),
                 false,
             ),
             (
                 "22:00",
                 "3:00",
                 now()
-                    .with_time(NaiveTime::from_hms_opt(17, 0, 0).unwrap())
-                    .unwrap(),
+                    .date()
+                    .and_time(NaiveTime::from_hms_opt(17, 0, 0).unwrap()),
                 false,
             ),
         ];

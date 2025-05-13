@@ -4,12 +4,12 @@ use indexmap::IndexSet;
 use serde::{Deserialize, Serialize};
 use tiny_http::Header;
 
-use crate::config::{Headers, PoolId};
-
-use super::{
-    api_call::{RequestContent, RequestMethod, ResponseContent},
-    ReferencingEvent,
+use crate::{
+    config::{Headers, PoolId},
+    request_reponse::{RequestContent, RequestMethod, ResponseContent},
 };
+
+use super::ReferencingEvent;
 
 pub type HttpQueue = Arc<Mutex<IndexSet<ReferencingEvent>>>;
 
@@ -166,9 +166,9 @@ mod tests {
             action: Default::default(),
             pool_id: Default::default(),
             request_headers: headers
-                .into_iter()
+                .iter()
                 .map(|a| {
-                    a.into_iter()
+                    a.iter()
                         .map(|(k, v)| (k.to_string(), v.to_string()))
                         .collect()
                 })

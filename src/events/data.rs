@@ -218,7 +218,6 @@ mod tests {
     fn test_merge_json() {
         let mut data: Data = json!({"a":"1"}).into();
         data.merge(json!({"b":"2"}).into());
-        dbg!(&data);
         assert_eq!(data.as_bytes().unwrap(), br#"{"a":"1","b":"2"}"#.as_ref());
         assert!(matches!(data, Data::Json(_)));
     }

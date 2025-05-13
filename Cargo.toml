@@ -1,6 +1,6 @@
 [package]
 name = "hvents"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2021"
 
 authors = ["Tomas Jakstas <tom.jakstas@gmail.com>"]
@@ -17,14 +17,14 @@ reqwest = { version = "0.12", default-features = false, features = [
     "http2",
     "macos-system-configuration",
     "rustls-tls",
-] }
+], optional = true }
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["derive"] }
 env_logger = "0.11"
-handlebars = "6"
-human-date-parser = "0.1"
+handlebars = { version = "6", optional = true }
+human-date-parser = "0.3"
 log = "0.4"
-rumqttc = { version = "0.24" }
+rumqttc = { version = "0.24", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
@@ -33,19 +33,29 @@ sunrise = "1"
 indexmap = { version = "2", features = ["serde"] }
 notify = { version = "6.1.1", default-features = false, features = [
     "macos_kqueue",
-] }
-tiny_http = "0.12"
+], optional = true }
+tiny_http = { version = "0.12", optional = true }
 metrics = "0.24"
 otlp-metrics-exporter = { version = "0.1", optional = true }
 
 [target.'cfg(unix)'.dependencies]
-evdev = { version = "0.12", default-features = false, features = ["serde"] }
+evdev = { version = "0.12", default-features = false, features = [
+    "serde",
+], optional = true }
 hex = { version = "0.4" }
 
 [features]
 
 metrics = ["otlp-metrics-exporter"]
-default = ["metrics"]
+default = [
+    "metrics",
+    "reqwest",
+    "notify",
+    "evdev",
+    "rumqttc",
+    "handlebars",
+    "tiny_http",
+]
 
 [build-dependencies]
 cargo-deb = "2"

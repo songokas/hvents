@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html>
+
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css"> -->
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/prism.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/plugins/autoloader/prism-autoloader.min.js"></script>
+        <link rel="stylesheet" href="https://unpkg.com/mvp.css">
+        <link href="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/themes/prism.min.css" rel="stylesheet">
+        <style>
+            .add-new-event {
+                background-color: rgb(88, 185, 63);
+                position: relative;
+                top: -2rem;
+            }
+
+            .add-new-key {
+                background-color: rgb(88, 185, 63);
+            }
+
+            .remove-event {
+                background-color: rgb(180, 73, 66);
+                float: right;
+            }
+
+            .invalid-element {
+                border: 1px solid rgb(180, 73, 66);
+                box-shadow: var(--box-shadow) var(--color-shadow);
+            }
+
+            .event-block,
+            .event-key-block {
+                border: 1px solid var(--color-bg-secondary);
+                border-radius: var(--border-radius);
+                box-shadow: var(--box-shadow) var(--color-shadow);
+                padding: 1.5rem;
+            }
+
+            .toggle-next {
+                width: 100%;
+                text-align: center;
+            }
+        </style>
+    </head>
+
+    <body>
+        <main>
+
+            <h3> Event Templates </h3>
+
+            <datalist id="times">
+                <option value="in 1 second">
+                <option value="1 second ago">
+                <option value="tomorrow">
+                <option value="today">
+                <option value="11:00">
+            </datalist>
+
+            <datalist id="next-events">
+            </datalist>
+
+
+            <div>
+                <div class="event-block">
+                    <input type="button" value="-" class="remove-event" style="display: none;">
+                    <label>Free form period event*: <input name="event_name" type="text" class="event-name"
+                            placeholder="Event name" required>
+                    </label>
+                    <label>From*: <input name=".period.from" type="text" list="times" class="event-data" required>
+                    </label>
+                    <label>To*: <input name=".period.to" type="text" list="times" class="event-data" required>
+                    </label>
+                    <a class="toggle-next" href="javascript:;">Toggle more info</a>
+                    <div style="display: none;">
+                        <label>Next event: <input name=".next_event" type="text" list="next-events" class="event-data">
+                        </label>
+                    </div>
+                </div>
+                <input type="button" value="+" class="add-new-event">
+            </div>
+
+            <div>
+                <div class="event-block">
+                    <input type="button" value="-" class="remove-event" style="display: none;">
+                    <label>Free form time event*: <input name="event_name" type="text" class="event-name"
+                            placeholder="Event name" required>
+                    </label>
+                    <label>Execute time*: <input name=".time" type="text" list="times" class="event-data" required>
+                    </label>
+                    <a class="toggle-next" href="javascript:;">Toggle more info</a>
+                    <div style="display: none;">
+                        <label>Next event: <input name=".next_event" type="text" list="next-events" class="event-data">
+                        </label>
+                    </div>
+                </div>
+                <input type="button" value="+" class="add-new-event">
+            </div>
+
+            <div>
+                <div class="event-block">
+                    <input type="button" value="-" class="remove-event" style="display: none;">
+                    <label>Mqtt subscribe*: <input name="event_name" type="text" class="event-name"
+                            placeholder="Event name" required>
+                    </label>
+                    <label>Topic*: <input name=".mqtt_subscribe.topic" type="text" class="event-data" required>
+                    </label>
+                    <a class="toggle-next" href="javascript:;">Toggle more info</a>
+                    <div style="display: none;">
+                        <label>Body contains: <input name=".mqtt_subscribe.body" type="text" class="event-data">
+                        </label>
+                        <label>Next event: <input name=".next_event" type="text" list="next-events" class="event-data">
+                        </label>
+                    </div>
+                </div>
+                <input type="button" value="+" class="add-new-event">
+            </div>
+
+
+            <div>
+                <div class="event-block">
+                    <input type="button" value="-" class="remove-event" style="display: none;">
+                    <label>Mqtt publish*: <input name="event_name" type="text" class="event-name"
+                            placeholder="Event name" required>
+                    </label>
+                    <label>Topic*: <input name=".mqtt_publish.topic" type="text" class="event-data" required>
+                    </label>
+                    <a class="toggle-next" href="javascript:;">Toggle more info</a>
+                    <div style="display: none;">
+                        <label>Body: <input name=".mqtt_publish.body" type="text" class="event-data">
+                        </label>
+                        <label>Next event: <input name=".next_event" type="text" list="next-events" class="event-data">
+                        </label>
+                    </div>
+                </div>
+                <input type="button" value="+" class="add-new-event">
+            </div>
+
+
+            <div>
+                <div class="event-block">
+                    <input type="button" value="-" class="remove-event" style="display: none;">
+                    <label>File read*: <input name="event_name" type="text" class="event-name" placeholder="Event name"
+                            required>
+                    </label>
+                    <label>Path*: <input name=".file_read" type="text" class="event-data" required>
+                    </label>
+                    <a class="toggle-next" href="javascript:;">Toggle more info</a>
+                    <div style="display: none;">
+                        <label>Next event: <input name=".next_event" type="text" list="next-events" class="event-data">
+                        </label>
+                    </div>
+                </div>
+                <input type="button" value="+" class="add-new-event">
+            </div>
+
+
+            <div>
+                <div class="event-block">
+                    <input type="button" value="-" class="remove-event" style="display: none;">
+                    <label>File write*: <input name="event_name" type="text" class="event-name" placeholder="Event name"
+                            required>
+                    </label>
+                    <label>Path*: <input name=".file_write" type="text" class="event-data" required>
+                    </label>
+                    <a class="toggle-next" href="javascript:;">Toggle more info</a>
+                    <div style="display: none;">
+                        <label>Next event: <input name=".next_event" type="text" list="next-events" class="event-data">
+                        </label>
+                    </div>
+                </div>
+                <input type="button" value="+" class="add-new-event">
+            </div>
+
+            <div>
+                <div class="event-block">
+                    <input type="button" value="-" class="remove-event" style="display: none;">
+                    <label>Call API*: <input name="event_name" type="text" class="event-name" placeholder="Event name"
+                            required>
+                    </label>
+                    <label>Url*: <input name=".api_call.url" type="url" class="event-data" required>
+                    </label>
+                    <label>Method*:
+                        <select name=".api_call.method" class="event-data">
+                            <option value="get">get</option>
+                            <option value="post">post</option>
+                            <option value="delete">delete</option>
+                            <option value="put">put</option>
+                        </select>
+                    </label>
+                    <a class="toggle-next" href="javascript:;">Toggle more info</a>
+                    <div style="display: none;">
+                        <div>
+                            <label>Headers:</label>
+                            <div class="event-key-block">
+                                <input name="event_key" class="event-key" type="text" placeholder="Header Name">
+                                <input name=".api_call.headers." type="text" class="event-data"
+                                    placeholder="Header Value">
+                            </div>
+                            <input type="button" value="+" class="add-new-key">
+                        </div>
+                        <label>Body: <input name=".api_call.request_body" type="text" class="event-data">
+                        </label>
+                        <label>Request content:
+                            <select name=".api_call.request_content" class="event-data">
+                                <option></option>
+                                <option value="json">json</option>
+                                <option value="text">text</option>
+                                <option value="bytes">binary</option>
+                            </select>
+                        </label>
+                        <label>Response content:
+                            <select name=".api_call.response_content" class="event-data">
+                                <option></option>
+                                <option value="json">json</option>
+                                <option value="text">text</option>
+                                <option value="bytes">binary</option>
+                            </select>
+                        </label>
+                        <label>Next event: <input name=".next_event" type="text" list="next-events" class="event-data">
+                        </label>
+                    </div>
+
+                </div>
+                <input type="button" value="+" class="add-new-event">
+            </div>
+
+            <div>
+                <div class="event-block">
+                    <input type="button" value="-" class="remove-event" style="display: none;">
+                    <label>API listen*: <input name="event_name" type="text" class="event-name" placeholder="Event name"
+                            required>
+                    </label>
+                    <label>Path*: <input name=".api_listen.path" type="text" class="event-data" pattern="\/.*">
+                    </label>
+                    <label>Method*:
+                        <select name=".api_listen.method" class="event-data">
+                            <option value="get">get</option>
+                            <option value="post">post</option>
+                            <option value="delete">delete</option>
+                            <option value="put">put</option>
+                        </select>
+                    </label>
+                    <a class="toggle-next" href="javascript:;">Toggle more info</a>
+                    <div style="display: none;">
+                        <label>Response content:
+                            <select name=".api_listen.response_type" class="event-data">
+                                <option></option>
+                                <option value="json">json</option>
+                                <option value="text">text</option>
+                                <option value="bytes">binary</option>
+                            </select>
+                        </label>
+                        <label>Next event: <input name=".next_event" type="text" list="next-events" class="event-data">
+                        </label>
+                    </div>
+                </div>
+                <input type="button" value="+" class="add-new-event">
+            </div>
+
+            <h3> Current events </h3>
+            <form id="current-events">
+            </form>
+
+            <h3> Configuration </h3>
+            <div>
+                <pre><code id="configuration-output" class="language-yaml"></code></pre>
+            </div>
+
+        </main>
+
+        <script type="module">
+            import * as YAML from 'https://cdn.jsdelivr.net/npm/yaml@2.5.0/browser/index.min.js';
+
+            const formElement = document.getElementById('current-events');
+            const configElement = document.getElementById('configuration-output');
+            const nextEventList = document.getElementById('next-events');
+
+            initialize();
+
+            function initialize() {
+
+                for (const elem of document.getElementsByClassName('add-new-event')) {
+                    elem.addEventListener('click', event => addNewEvent(event));
+                }
+
+                for (const elem of document.getElementsByClassName('toggle-next')) {
+                    elem.addEventListener('click', toggleNext);
+                }
+
+                for (const elem of document.getElementsByClassName('add-new-key')) {
+                    elem.addEventListener('click', clonePrevious);
+                }
+
+                for (const elem of document.getElementsByClassName('event-key')) {
+                    elem.addEventListener('input', changeNextInputName);
+                }
+
+                const previousFormHtml = localStorage.getItem('formHtml');
+                const previousFormDataText = localStorage.getItem('formData');
+                if (previousFormHtml && previousFormDataText) {
+                    const previousFormData = JSON.parse(previousFormDataText);
+
+                    formElement.innerHTML = previousFormHtml;
+                    const allElements = formElement.querySelectorAll('.event-name,.event-key,.event-data');
+                    for (let i = 0; i < allElements.length; i++) {
+                        allElements[i].value = previousFormData[i];
+                    }
+
+                    for (const node of formElement.getElementsByClassName('event-block')) {
+                        listenForChanges(node);
+                    }
+                    serializeForm();
+                }
+            }
+
+            function clonePrevious(event) {
+                const parent = event.target.parentElement;
+                const newNode = event.target.previousElementSibling.cloneNode(true);
+                parent.insertBefore(newNode, event.target);
+
+                for (const elem of newNode.getElementsByClassName('event-key')) {
+                    elem.addEventListener('input', changeNextInputName);
+                }
+                for (const elem of newNode.getElementsByClassName('event-data')) {
+                    elem.addEventListener('input', handleDataUpdates);
+                }
+
+                return false;
+            }
+
+            function toggleNext(event) {
+                const displayStyle = event.target.nextElementSibling.style.display == 'none' ? 'block' : 'none';
+                event.target.nextElementSibling.style.display = displayStyle;
+                return false;
+            }
+
+            function changeNextInputName(event) {
+                const input = event.target.nextElementSibling;
+                let paths = input.getAttribute('name').split('.');
+                paths[paths.length - 1] = event.target.value;
+                input.setAttribute('name', paths.join('.'));
+            }
+
+            function serializeForm() {
+                let configuration = {
+                    events: {
+                    }
+                };
+
+                nextEventList.replaceChildren();
+
+                const data = new FormData(formElement);
+                let valuesToSave = [];
+                for (const item of data) {
+                    const elementName = item[0];
+                    const value = item[1];
+                    if (elementName == 'event_name' || value == "") {
+                        continue;
+                    }
+                    if (elementName.endsWith("next_event")) {
+                        const option = document.createElement("option");
+                        option.setAttribute('value', value);
+                        nextEventList.appendChild(option);
+                    }
+                    setObjectProperty(configuration.events, elementName, value);
+                }
+                configElement.textContent = YAML.stringify(configuration);
+                Prism.highlightAll();
+                localStorage.setItem('formHtml', formElement.innerHTML);
+                localStorage.setItem('formData', JSON.stringify(Array.from(data.values())));
+            }
+
+            function addNewEvent(event) {
+                const node = event.target.parentElement.firstElementChild.cloneNode(true);
+
+                listenForChanges(node);
+
+                formElement.appendChild(node);
+                serializeForm();
+                node.scrollIntoView();
+            }
+
+            function changeInputNames(name, eventAttrs) {
+                for (const input of eventAttrs) {
+                    let paths = input.getAttribute('name').split('.');
+                    paths[0] = name;
+                    input.setAttribute('name', paths.join('.'));
+                }
+            }
+
+            function handleDataUpdates(event) {
+                if (event.target.checkValidity()) {
+                    event.target.classList.remove('invalid-element');
+                } else {
+                    event.target.classList.add('invalid-element');
+                }
+                serializeForm();
+            }
+
+            function listenForChanges(node) {
+                const eventType = node.getElementsByClassName('event-name').item(0);
+                const removeEventElement = node.getElementsByClassName('remove-event').item(0);
+                const dataElements = node.getElementsByClassName('event-data');
+
+                for (const input of dataElements) {
+                    input.addEventListener('input', handleDataUpdates);
+                }
+
+                changeInputNames(eventType.value, dataElements);
+
+                eventType.addEventListener('change', event => {
+                    changeInputNames(event.target.value, dataElements);
+                    serializeForm();
+                });
+                removeEventElement.style.display = 'block';
+                removeEventElement.addEventListener('click', event => {
+                    event.target.parentElement.remove();
+                    serializeForm();
+                });
+
+                for (const elem of node.getElementsByClassName('toggle-next')) {
+                    elem.addEventListener('click', toggleNext);
+                }
+                for (const elem of node.getElementsByClassName('add-new-key')) {
+                    elem.addEventListener('click', clonePrevious);
+                }
+
+                for (const elem of node.getElementsByClassName('event-key')) {
+                    elem.addEventListener('input', changeNextInputName);
+                }
+            }
+
+            function setObjectProperty(object, path, value) {
+                const parts = path.split('.');
+                const limit = parts.length - 1;
+                for (let i = 0; i < limit; ++i) {
+                    const key = parts[i];
+                    object = object[key] ?? (object[key] = {});
+                }
+                const key = parts[limit];
+                object[key] = value;
+            }
+        </script>
+    </body>
+
+</html>

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::PathBuf, sync::OnceLock};
 
-use chrono::{DateTime, Local};
+use chrono::{Local, NaiveDateTime};
 use indexmap::IndexMap;
 use serde::Deserialize;
 
@@ -83,8 +83,8 @@ pub fn init_location(lat: f64, long: f64) {
     LOCATION.get_or_init(|| (lat, long));
 }
 
-pub fn now() -> DateTime<Local> {
-    Local::now()
+pub fn now() -> NaiveDateTime {
+    Local::now().naive_local()
 }
 
 static LOCATION: OnceLock<(f64, f64)> = OnceLock::new();

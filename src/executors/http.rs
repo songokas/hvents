@@ -10,12 +10,8 @@ use tiny_http::{Header, Method, Request, Response, Server};
 
 use crate::{
     config::Headers,
-    events::{
-        api_call::{RequestContent, ResponseContent},
-        api_listen::HttpQueue,
-        data::Data,
-        EventType, Events, ReferencingEvent,
-    },
+    events::{api_listen::HttpQueue, data::Data, EventType, Events, ReferencingEvent},
+    request_reponse::{RequestContent, ResponseContent},
 };
 
 pub fn http_executor(
@@ -23,7 +19,7 @@ pub fn http_executor(
     listen: &str,
     events: &Events,
     queue_tx: Sender<ReferencingEvent>,
-    handlebars: &handlebars::Handlebars,
+    #[cfg(feature = "handlebars")] handlebars: &handlebars::Handlebars,
 ) -> anyhow::Result<()> {
     let server = Server::http(listen)
         .map_err(|e| anyhow!("Http server failed to listen to {listen} {e}"))?;
@@ -42,6 +38,7 @@ pub fn http_executor(
         let response = match handle_incoming(
             events,
             &http_queue.lock().expect("http queue locked"),
+            #[cfg(feature = "handlebars")]
             handlebars,
             &mut request,
         ) {
@@ -72,7 +69,7 @@ pub fn http_executor(
 fn handle_incoming(
     events: &Events,
     http_events: &IndexSet<ReferencingEvent>,
-    handlebars: &handlebars::Handlebars,
+    #[cfg(feature = "handlebars")] handlebars: &handlebars::Handlebars,
     request: &mut Request,
 ) -> Option<ResponseData> {
     let (ref_event, listen_event) =
@@ -128,6 +125,7 @@ fn handle_incoming(
     let segments: Vec<&str> = request.url().split('/').filter(|s| !s.is_empty()).collect();
 
     let template_response = if let Some(t) = &listen_event.response_body {
+        #[cfg(feature = "handlebars")]
         let template_data = TemplateData {
             request: match &request_content {
                 Some(Data::Json(v)) => v.into(),
@@ -138,10 +136,13 @@ fn handle_incoming(
             data: &ref_event.data,
         };
         let mut content = Vec::default();
+        #[cfg(feature = "handlebars")]
         if let Err(e) = handlebars.render_template_to_write(t, &template_data, &mut content) {
             error!("Failed to render template {e} event={}", ref_event.name);
             return None;
         }
+        #[cfg(not(feature = "handlebars"))]
+        content.extend(t.as_bytes());
         content.into()
     } else {
         None
@@ -225,11 +226,13 @@ mod tests {
     use handlebars::Handlebars;
     use serde_json::json;
 
-    use crate::events::{
-        api_call::RequestMethod,
-        api_listen::{ApiListenEvent, HttpQueue},
-        time::TimeEvent,
-        NextEvent,
+    use crate::{
+        events::{
+            api_listen::{ApiListenEvent, HttpQueue},
+            time::TimeEvent,
+            NextEvent,
+        },
+        request_reponse::RequestMethod,
     };
 
     use super::*;

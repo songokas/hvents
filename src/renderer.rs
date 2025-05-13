@@ -6,7 +6,10 @@ use indexmap::IndexMap;
 use serde::Serialize;
 use std::fmt::Write;
 
-use crate::events::data::{Data, Metadata};
+use crate::{
+    config::now,
+    events::data::{Data, Metadata},
+};
 
 pub fn load_handlebars() -> Handlebars<'static> {
     let mut handlebars = Handlebars::new();
@@ -78,7 +81,7 @@ fn date_time_helper(
         .render();
 
     let time_format =
-        match from_human_time(&time).map_err(|e| RenderErrorReason::Other(e.to_string()))? {
+        match from_human_time(&time, now()).map_err(|e| RenderErrorReason::Other(e.to_string()))? {
             ParseResult::Date(d) => d.format(&format),
             ParseResult::Time(d) => d.format(&format),
             ParseResult::DateTime(d) => d.format(&format),
@@ -103,7 +106,7 @@ mod tests {
         let handlebars = load_handlebars();
         let template = "Air temperature {{#each forecastTimestamps}}{{#if (eq forecastTimeUtc (date-time-format ../expectedKey \"%Y-%m-%d %H:%M:%S\"))}}{{airTemperature}}{{/if}}{{/each}}";
         let mut data: Value = serde_json::from_str(
-            &format!(r#"{{"forecastTimestamps":[{{"forecastTimeUtc":"{} 00:00:00", "airTemperature":"22.1"}}]}}"#, now.naive_local().date()),
+            &format!(r#"{{"forecastTimestamps":[{{"forecastTimeUtc":"{} 00:00:00", "airTemperature":"22.1"}}]}}"#, now.date()),
         )
         .unwrap();
         data["expectedKey"] = Value::String("today 00:00:00".to_string());

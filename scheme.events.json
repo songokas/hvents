@@ -1,8 +1,8 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://example.com/hvents.events.schema.json",
-    "title": "home hvents.events configuration",
-    "description": "hvents events configuration",
+    "title": "Home event configuration",
+    "description": "Specific event configuration",
     "type": "object",
     "patternProperties": {
         ".+": {

@@ -3,4 +3,7 @@ pub mod database;
 pub mod events;
 pub mod executors;
 pub mod pools;
+#[cfg(feature = "handlebars")]
 pub mod renderer;
+pub mod request_reponse;
+pub mod sun_time;

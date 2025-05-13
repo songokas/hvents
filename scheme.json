@@ -1,8 +1,8 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://example.com/hvents.schema.json",
-    "title": "home event configuration",
-    "description": "Full event configuration",
+    "title": "Home event configuration",
+    "description": "Root home event configuration",
     "type": "object",
     "properties": {
         "start_with": {
@@ -87,8 +87,10 @@
                     "type": "number"
                 }
             },
-            "required": ["latitude", "longitude"]
-
+            "required": [
+                "latitude",
+                "longitude"
+            ]
         },
         "mqtt": {
             "description": "Mqtt configuration",

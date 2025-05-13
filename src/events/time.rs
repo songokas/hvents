@@ -1,11 +1,13 @@
 use core::{fmt::Display, str::FromStr};
 use std::time::Duration;
 
-use chrono::{DateTime, Datelike, Days, Local, NaiveDateTime, NaiveTime};
+use chrono::{DateTime, Days, Local, NaiveDateTime, NaiveTime};
 use human_date_parser::{from_human_time, ParseError, ParseResult};
 use serde::{de, Deserialize, Serialize};
 
 use crate::config::{location, now};
+use crate::sun_time::sunrise;
+use crate::sun_time::sunset;
 
 pub const COOL_DOWN_DURATION: Duration = Duration::from_millis(3000);
 pub const EXECUTION_PERIOD: Duration = Duration::from_millis(1000);
@@ -20,11 +22,11 @@ pub struct TimeEvent {
 }
 
 impl TimeEvent {
-    pub fn matches(&self, now: DateTime<Local>) -> bool {
+    pub fn matches(&self, now: NaiveDateTime) -> bool {
         self.execute_time.within_execution_period(now)
     }
 
-    pub fn expired(&self, now: DateTime<Local>) -> bool {
+    pub fn expired(&self, now: NaiveDateTime) -> bool {
         match &self.execute_time {
             ExecuteTime::Time(_) => false,
             t => t.lt(now - EXECUTION_PERIOD),
@@ -41,41 +43,41 @@ impl TimeEvent {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteTime {
     // datetime and date can change depending on the supplied value
-    DateTime((DateTime<Local>, String)),
+    DateTime((NaiveDateTime, String)),
     Date((NaiveDateTime, String)),
     Time((NaiveTime, String)),
 }
 
 impl ExecuteTime {
-    pub fn gte(&self, now: DateTime<Local>) -> bool {
+    pub fn gte(&self, now: NaiveDateTime) -> bool {
         match self {
             Self::DateTime((d, _)) => *d >= now,
-            Self::Date((d, _)) => *d >= now.naive_local(),
-            Self::Time((d, _)) => *d >= now.naive_local().time(),
+            Self::Date((d, _)) => *d >= now,
+            Self::Time((d, _)) => *d >= now.time(),
         }
     }
 
-    pub fn lte(&self, now: DateTime<Local>) -> bool {
+    pub fn lte(&self, now: NaiveDateTime) -> bool {
         match self {
             Self::DateTime((d, _)) => *d <= now,
-            Self::Date((d, _)) => *d <= now.naive_local(),
-            Self::Time((d, _)) => *d <= now.naive_local().time(),
+            Self::Date((d, _)) => *d <= now,
+            Self::Time((d, _)) => *d <= now.time(),
         }
     }
 
-    pub fn within_execution_period(&self, now: DateTime<Local>) -> bool {
+    pub fn within_execution_period(&self, now: NaiveDateTime) -> bool {
         match self {
             Self::DateTime((d, _)) => (now - *d)
                 .abs()
                 .to_std()
                 .map(|s| s < EXECUTION_PERIOD)
                 .unwrap_or_default(),
-            Self::Date((d, _)) => (now.naive_local() - *d)
+            Self::Date((d, _)) => (now - *d)
                 .abs()
                 .to_std()
                 .map(|s| s < EXECUTION_PERIOD)
                 .unwrap_or_default(),
-            Self::Time((d, _)) => (now.naive_local().time() - *d)
+            Self::Time((d, _)) => (now.time() - *d)
                 .abs()
                 .to_std()
                 .map(|s| s < EXECUTION_PERIOD)
@@ -83,19 +85,19 @@ impl ExecuteTime {
         }
     }
 
-    pub fn gt(&self, now: DateTime<Local>) -> bool {
+    pub fn gt(&self, now: NaiveDateTime) -> bool {
         match self {
             Self::DateTime((d, _)) => *d > now,
-            Self::Date((d, _)) => *d > now.naive_local(),
-            Self::Time((d, _)) => *d > now.naive_local().time(),
+            Self::Date((d, _)) => *d > now,
+            Self::Time((d, _)) => *d > now.time(),
         }
     }
 
-    pub fn lt(&self, now: DateTime<Local>) -> bool {
+    pub fn lt(&self, now: NaiveDateTime) -> bool {
         match self {
             Self::DateTime((d, _)) => *d < now,
-            Self::Date((d, _)) => *d < now.naive_local(),
-            Self::Time((d, _)) => *d < now.naive_local().time(),
+            Self::Date((d, _)) => *d < now,
+            Self::Time((d, _)) => *d < now.time(),
         }
     }
 
@@ -114,9 +116,7 @@ impl FromStr for ExecuteTime {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let invalid_value = || ParseError::ValueInvalid {
-            amount: s.to_string(),
-        };
+        let invalid_value = || ParseError::InvalidFormat;
         if s.contains("sunset") || s.contains("sunrise") {
             if let Some((lat, long)) = location() {
                 return parse_sunrise_sunset(s, lat, long);
@@ -124,8 +124,7 @@ impl FromStr for ExecuteTime {
                 return Err(invalid_value());
             }
         }
-
-        Ok(match from_human_time(s)? {
+        Ok(match from_human_time(s, now())? {
             ParseResult::Date(d) => {
                 ExecuteTime::Date((NaiveDateTime::new(d, NaiveTime::default()), s.to_string()))
             }
@@ -136,9 +135,7 @@ impl FromStr for ExecuteTime {
 }
 
 fn parse_sunrise_sunset(s: &str, lat: f64, long: f64) -> Result<ExecuteTime, ParseError> {
-    let invalid_value = || ParseError::ValueInvalid {
-        amount: s.to_string(),
-    };
+    let invalid_value = || ParseError::InvalidFormat;
     let replace_sunset = s.starts_with("sunset");
     let replace_sunrise = s.starts_with("sunrise");
 
@@ -149,7 +146,7 @@ fn parse_sunrise_sunset(s: &str, lat: f64, long: f64) -> Result<ExecuteTime, Par
         } else {
             sunset.trim()
         };
-        from_human_time(s)
+        from_human_time(s, now())
     } else if replace_sunrise {
         let sunrise = s.replace("sunrise", "");
         let s = if sunrise.trim().is_empty() {
@@ -157,62 +154,51 @@ fn parse_sunrise_sunset(s: &str, lat: f64, long: f64) -> Result<ExecuteTime, Par
         } else {
             sunrise.trim()
         };
-        from_human_time(s)
+        from_human_time(s, now())
     } else {
-        from_human_time(s)
+        from_human_time(s, now())
     };
 
     Ok(match result? {
         ParseResult::Date(d) => {
-            let (sunrise, sunset) =
-                sunrise::sunrise_sunset(lat, long, d.year(), d.month(), d.day());
-
-            let dt: DateTime<Local> = if s.contains("sunrise") {
-                DateTime::from_timestamp(sunrise, 0)
-                    .map(Into::into)
-                    .ok_or_else(invalid_value)?
+            let dt = if s.contains("sunrise") {
+                sunrise(lat, long, d)
             } else if s.contains("sunset") {
-                DateTime::from_timestamp(sunset, 0)
-                    .map(Into::into)
-                    .ok_or_else(invalid_value)?
+                sunset(lat, long, d)
             } else {
                 return Err(invalid_value());
             };
-            ExecuteTime::Date((dt.naive_local(), s.to_string()))
+            ExecuteTime::Date((dt.with_timezone(&Local).naive_local(), s.to_string()))
         }
         ParseResult::Time(_) => return Err(invalid_value()),
         ParseResult::DateTime(d) => {
-            let calculate = |d: DateTime<Local>| {
-                let (sunrise, sunset) =
-                    sunrise::sunrise_sunset(lat, long, d.year(), d.month(), d.day());
+            let calculate = |d: NaiveDateTime| {
                 if replace_sunrise {
-                    Ok(DateTime::from_timestamp(sunrise, 0)
-                        .ok_or_else(invalid_value)?
-                        .into())
+                    Ok(sunrise(lat, long, d.date()))
                 } else if replace_sunset {
-                    Ok(DateTime::from_timestamp(sunset, 0)
-                        .ok_or_else(invalid_value)?
-                        .into())
+                    Ok(sunset(lat, long, d.date()))
                 } else {
                     Err(invalid_value())
                 }
             };
 
-            let sun_dt: DateTime<Local> = calculate(d)?;
+            let sun_dt: DateTime<Local> = calculate(d)?.into();
             let now = now();
-            let time_diff = now.naive_local().time() - d.naive_local().time();
+            let time_diff = now.time() - d.time();
 
             // if its today an sunrise/sunset happened calculate next
-            let dt = if sun_dt.date_naive() == now.date_naive() && now >= sun_dt {
+            let dt = if sun_dt.date_naive() == now.date() && now >= sun_dt.naive_local() {
                 calculate(
                     now.checked_add_days(Days::new(1))
                         .ok_or_else(invalid_value)?,
-                )? - time_diff
+                )?
+                .with_timezone(&Local)
+                    - time_diff
             } else {
                 sun_dt - time_diff
             };
 
-            ExecuteTime::DateTime((dt, s.to_string()))
+            ExecuteTime::DateTime((dt.naive_local(), s.to_string()))
         }
     })
 }
@@ -220,7 +206,7 @@ fn parse_sunrise_sunset(s: &str, lat: f64, long: f64) -> Result<ExecuteTime, Par
 impl Display for ExecuteTime {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::DateTime((d, _)) => write!(f, "{}", d.naive_local()),
+            Self::DateTime((d, _)) => write!(f, "{}", d),
             Self::Date((d, _)) => write!(f, "{}", d),
             Self::Time((d, _)) => write!(f, "{}", d),
         }
@@ -246,7 +232,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use chrono::{Days, Duration, Local, NaiveDate, Timelike};
+    use chrono::{Days, Duration, NaiveDate, Timelike};
 
     use crate::config::{init_location, now};
 
@@ -256,44 +242,40 @@ mod tests {
     fn test_execution_time_from_json() {
         let data = [
             ("now", now(), true),
-            (
-                "today",
-                now().with_time(NaiveTime::default()).unwrap(),
-                true,
-            ),
+            ("today", now().date().and_time(NaiveTime::default()), true),
             (
                 "22:00",
                 now()
-                    .with_time(NaiveTime::from_hms_opt(22, 0, 0).unwrap())
-                    .unwrap(),
+                    .date()
+                    .and_time(NaiveTime::from_hms_opt(22, 0, 0).unwrap()),
                 true,
             ),
             (
                 "22:00:00",
                 now()
-                    .with_time(NaiveTime::from_hms_milli_opt(22, 0, 0, 999).unwrap())
-                    .unwrap(),
+                    .date()
+                    .and_time(NaiveTime::from_hms_milli_opt(22, 0, 0, 999).unwrap()),
                 true,
             ),
             (
                 "22:00:01",
                 now()
-                    .with_time(NaiveTime::from_hms_opt(22, 0, 0).unwrap())
-                    .unwrap(),
+                    .date()
+                    .and_time(NaiveTime::from_hms_opt(22, 0, 0).unwrap()),
                 false,
             ),
             (
                 "22:00:00",
                 now()
-                    .with_time(NaiveTime::from_hms_milli_opt(21, 59, 59, 1).unwrap())
-                    .unwrap(),
+                    .date()
+                    .and_time(NaiveTime::from_hms_milli_opt(21, 59, 59, 1).unwrap()),
                 true,
             ),
             (
                 "21:59:59",
                 now()
-                    .with_time(NaiveTime::from_hms_opt(22, 0, 0).unwrap())
-                    .unwrap(),
+                    .date()
+                    .and_time(NaiveTime::from_hms_opt(22, 0, 0).unwrap()),
                 false,
             ),
         ];
@@ -313,29 +295,25 @@ mod tests {
         let data = [
             ("now", now(), false),
             ("yesterday 12:00", now(), true),
-            (
-                "today",
-                now().with_time(NaiveTime::default()).unwrap(),
-                false,
-            ),
+            ("today", now().date().and_time(NaiveTime::default()), false),
             (
                 "yesterday",
-                now().with_time(NaiveTime::default()).unwrap(),
+                now().date().and_time(NaiveTime::default()),
                 true,
             ),
             (
                 "22:00",
                 now()
-                    .with_time(NaiveTime::from_hms_opt(22, 0, 0).unwrap())
-                    .unwrap(),
+                    .date()
+                    .and_time(NaiveTime::from_hms_opt(22, 0, 0).unwrap()),
                 false,
             ),
             // time only events do not expire
             (
                 "21:00",
                 now()
-                    .with_time(NaiveTime::from_hms_opt(22, 0, 0).unwrap())
-                    .unwrap(),
+                    .date()
+                    .and_time(NaiveTime::from_hms_opt(22, 0, 0).unwrap()),
                 false,
             ),
         ];
@@ -350,10 +328,7 @@ mod tests {
     fn test_time_result_matches() {
         let now = now();
         let in_few_seconds = now + Duration::seconds(2);
-        let time = ExecuteTime::Time((
-            now.naive_local().time(),
-            now.naive_local().time().to_string(),
-        ));
+        let time = ExecuteTime::Time((now.time(), now.time().to_string()));
         assert!(time.gte(now));
         assert!(time.within_execution_period(now));
         assert!(time.lt(in_few_seconds));
@@ -374,9 +349,9 @@ mod tests {
         let tomorrow = now
             .checked_add_days(Days::new(1))
             .unwrap()
-            .with_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap())
-            .unwrap();
-        let time = ExecuteTime::Date((now.naive_local(), "tomorrow".to_string()));
+            .date()
+            .and_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap());
+        let time = ExecuteTime::Date((now, "tomorrow".to_string()));
         assert!(time.gte(now));
         assert!(time.within_execution_period(now));
         assert!(time.lt(now.checked_add_days(Days::new(1)).unwrap()));
@@ -394,11 +369,11 @@ mod tests {
     #[test]
     fn test_date_time_result_matches() {
         let now = now();
-        let tomorrow = Local::now()
+        let tomorrow = now
             .checked_add_days(Days::new(1))
             .unwrap()
-            .with_time(NaiveTime::from_hms_opt(12, 0, 0).unwrap())
-            .unwrap();
+            .date()
+            .and_time(NaiveTime::from_hms_opt(12, 0, 0).unwrap());
         let time = ExecuteTime::DateTime((now, "tomorrow 12:00".to_string()));
 
         assert!(time.gte(now));
@@ -425,21 +400,13 @@ mod tests {
                 "2024-07-31 sunrise",
                 NaiveDate::from_ymd_opt(2024, 7, 31)
                     .unwrap()
-                    .and_hms_opt(6, 59, 37)
-                    .unwrap()
-                    .and_local_timezone(Local)
-                    .unwrap()
-                    .into(),
+                    .and_hms_opt(6, 59, 36),
             ),
             (
                 "2024-07-31 sunset",
                 NaiveDate::from_ymd_opt(2024, 7, 31)
                     .unwrap()
-                    .and_hms_opt(22, 33, 51)
-                    .unwrap()
-                    .and_local_timezone(Local)
-                    .unwrap()
-                    .into(),
+                    .and_hms_opt(22, 33, 52),
             ),
             // disabled because now can not be changed in the library
             // (
@@ -517,7 +484,12 @@ mod tests {
             "monday".to_string(),
             "in 10s".to_string(),
             "wednesday 11:00".to_string(),
-            "this week wednesday 11:00".to_string(),
+            "this wednesday 11:00".to_string(),
+            "This week Monday 11:00".to_string(),
+            "This week Sunday 11:00".to_string(),
+            "This Sunday 11:00".to_string(),
+            "Sunday 11:00".to_string(),
+            "Next Sunday 11:00".to_string(),
             format!("{hour}:00"),
             "in 1 day".to_string(),
         ];

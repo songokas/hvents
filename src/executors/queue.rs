@@ -6,19 +6,28 @@ use std::{
 use indexmap::IndexMap;
 use log::{debug, error, info, warn};
 use metrics::counter;
+#[cfg(feature = "notify")]
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
+#[cfg(feature = "rumqttc")]
 use rumqttc::QoS;
 
+#[cfg(feature = "tiny_http")]
+use crate::events::api_listen::ApiListenAction;
+#[cfg(feature = "reqwest")]
+use crate::pools::api::ClientPool;
+#[cfg(feature = "tiny_http")]
+use crate::pools::http::HttpQueuePool;
+#[cfg(feature = "rumqttc")]
+use crate::pools::mqtt::MqttPool;
+#[cfg(feature = "handlebars")]
+use crate::renderer::TemplateData;
 use crate::{
     config::now,
     events::{
-        api_listen::ApiListenAction,
         data::{Data, Metadata},
         file_watch::WatchAction,
         EventType, Events, NextEvent, ReferencingEvent,
     },
-    pools::{api::ClientPool, http::HttpQueuePool, mqtt::MqttPool},
-    renderer::TemplateData,
 };
 
 #[allow(clippy::too_many_arguments)]
@@ -27,11 +36,11 @@ pub fn event_executor(
     queue_rx: Receiver<ReferencingEvent>,
     queue_tx: Sender<ReferencingEvent>,
     timer_tx: Sender<ReferencingEvent>,
-    mut file_watcher: Option<RecommendedWatcher>,
-    mqtt_pool: MqttPool,
-    client_pool: ClientPool,
-    http_queue_pool: HttpQueuePool,
-    handlebars: &handlebars::Handlebars,
+    #[cfg(feature = "notify")] mut file_watcher: Option<RecommendedWatcher>,
+    #[cfg(feature = "rumqttc")] mqtt_pool: MqttPool,
+    #[cfg(feature = "reqwest")] client_pool: ClientPool,
+    #[cfg(feature = "tiny_http")] http_queue_pool: HttpQueuePool,
+    #[cfg(feature = "handlebars")] handlebars: &handlebars::Handlebars,
 ) -> Result<(), anyhow::Error> {
     let mut state: IndexMap<String, String> = IndexMap::new();
     let send_next_event = |data: Data, metadata: Metadata, next_event_name: Option<String>| {
@@ -60,6 +69,7 @@ pub fn event_executor(
                 state.extend(map.clone());
             }
 
+            #[cfg(feature = "handlebars")]
             let template_data = TemplateData {
                 data: &received.data,
                 metadata: &received.metadata,
@@ -68,6 +78,7 @@ pub fn event_executor(
 
             let next_event_name = match &received.next_event {
                 Some(NextEvent::Template(s)) => {
+                    #[cfg(feature = "handlebars")]
                     match handlebars.render_template(s, &template_data) {
                         Ok(s) => Some(s),
                         Err(e) => {
@@ -75,6 +86,8 @@ pub fn event_executor(
                             None
                         }
                     }
+                    #[cfg(not(feature = "handlebars"))]
+                    Some(s.clone())
                 }
                 Some(NextEvent::Name(s)) => Some(s.clone()),
                 None => None,
@@ -91,6 +104,7 @@ pub fn event_executor(
             debug!("Running event={}", received.event_id());
 
             match received.event_type {
+                #[cfg(feature = "rumqttc")]
                 EventType::MqttSubscribe(e) => {
                     if let Some(c) = mqtt_pool.get(&e.pool_id) {
                         if let Err(e) = c.try_subscribe(&e.topic, QoS::AtMostOnce) {
@@ -107,6 +121,7 @@ pub fn event_executor(
                     // subscription events begin in mqtt_executor
                     continue;
                 }
+                #[cfg(feature = "rumqttc")]
                 EventType::MqttUnsubscribe(e) => {
                     if let Some(c) = mqtt_pool.get(&e.pool_id) {
                         if let Err(e) = c.try_unsubscribe(&e.topic) {
@@ -121,8 +136,10 @@ pub fn event_executor(
                         );
                     }
                 }
+                #[cfg(feature = "rumqttc")]
                 EventType::MqttPublish(ref e) => {
                     if let Some(c) = mqtt_pool.get(&e.pool_id) {
+                        #[cfg(feature = "handlebars")]
                         let topic = match handlebars.render_template(&e.topic, &template_data) {
                             Ok(t) if !t.trim().is_empty() => t,
                             Ok(_) => {
@@ -134,8 +151,11 @@ pub fn event_executor(
                                 continue;
                             }
                         };
+                        #[cfg(not(feature = "handlebars"))]
+                        let topic = e.topic.clone();
                         let payload = if let Some(template) = &e.body {
                             let mut payload = Vec::default();
+                            #[cfg(feature = "handlebars")]
                             if let Err(e) = handlebars.render_template_to_write(
                                 template,
                                 &template_data,
@@ -144,6 +164,8 @@ pub fn event_executor(
                                 error!("Failed to render template event={} {e}", received.name);
                                 continue;
                             }
+                            #[cfg(not(feature = "handlebars"))]
+                            payload.extend(template.as_bytes().to_vec());
                             payload.into()
                         } else {
                             match received.data.as_bytes() {
@@ -171,8 +193,10 @@ pub fn event_executor(
                         );
                     }
                 }
+                #[cfg(feature = "reqwest")]
                 EventType::ApiCall(mut e) => {
                     if let Some(client) = client_pool.get(&e.pool_id) {
+                        #[cfg(feature = "handlebars")]
                         match handlebars.render_template(&e.url, &template_data) {
                             Ok(url) => e.url = url,
                             Err(e) => {
@@ -180,6 +204,7 @@ pub fn event_executor(
                                 continue 'main;
                             }
                         };
+                        #[cfg(feature = "handlebars")]
                         if let Some(body) = &e.request_body {
                             match handlebars.render_template(body, &template_data) {
                                 Ok(body) => received.data = Data::String(body),
@@ -221,6 +246,7 @@ pub fn event_executor(
                         continue;
                     }
                 }
+                #[cfg(feature = "tiny_http")]
                 EventType::ApiListen(ref e) => match e.action {
                     ApiListenAction::Start => {
                         if let Some(queue) = http_queue_pool.get(&e.pool_id) {
@@ -247,8 +273,10 @@ pub fn event_executor(
                 EventType::Period(e) => {
                     if !e.is_within_period(now()) {
                         debug!(
-                            "Event is not scheduled for period defined in {}",
-                            received.name
+                            "Event is not scheduled for period defined in {} from={} to={}",
+                            received.name,
+                            e.from(),
+                            e.to()
                         );
                         continue;
                     }
@@ -282,8 +310,10 @@ pub fn event_executor(
                         debug!("File write path={}", f.file.to_string_lossy());
                     }
                 }
-                // these events are handled in file change executor
+                // these events are handled in a file change executor
+                #[cfg(feature = "notify")]
                 EventType::FileChanged(_) => continue,
+                #[cfg(feature = "notify")]
                 EventType::Watch(f) => match f.action {
                     WatchAction::Start => {
                         let mode = if f.recursive {
@@ -310,7 +340,7 @@ pub fn event_executor(
                             error!("Unable to unwatch {} {e}", f.path.to_string_lossy());
                         } else {
                             debug!(
-                                "Stoped watching path={} for changes",
+                                "Stopped watching path={} for changes",
                                 f.path.to_string_lossy()
                             );
                         }
@@ -318,10 +348,12 @@ pub fn event_executor(
                 },
                 EventType::Execute(mut c) => {
                     debug!(
-                        "Executing command name={} with arguments {:?}",
+                        "Executing command name={} with initial arguments {:?}",
                         c.command, c.args
                     );
+                    #[cfg(feature = "handlebars")]
                     let args = &mut c.args;
+                    #[cfg(feature = "handlebars")]
                     for (index, template) in &c.replace_args {
                         match handlebars.render_template(template, &template_data) {
                             Ok(a) if args.get(*index).is_some() => args[*index] = a,
@@ -358,7 +390,7 @@ pub fn event_executor(
                 EventType::Print(e) => e.run(&received.data),
                 EventType::Forward => (),
                 // events begin in evdev executor
-                #[cfg(target_os = "linux")]
+                #[cfg(feature = "evdev")]
                 EventType::ScanCodeRead(_) => continue,
             }
 

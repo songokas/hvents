@@ -17,15 +17,15 @@ Supports:
 amd64
 
 ```
-wget https://github.com/songokas/hvents/releases/download/v0.4.0/hvents_0.4.0_amd64.deb \
-  && sudo apt install ./hvents_0.4.0_amd64.deb
+wget https://github.com/songokas/hvents/releases/download/v0.4.1/hvents_0.4.1_amd64.deb \
+  && sudo apt install ./hvents_0.4.1_amd64.deb
 ```
 
 armhf
 
 ```
-wget https://github.com/songokas/hvents/releases/download/v0.4.0/hvents_0.4.0_armhf.deb \
-  && sudo apt install ./hvents_0.4.0_armhf.deb
+wget https://github.com/songokas/hvents/releases/download/v0.4.1/hvents_0.4.1_armhf.deb \
+  && sudo apt install ./hvents_0.4.1_armhf.deb
 ```
 
 ## Download binary

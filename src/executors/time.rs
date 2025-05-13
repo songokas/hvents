@@ -101,7 +101,7 @@ pub fn timed_executor<'a>(
 mod tests {
     use std::{sync::mpsc::channel, thread::spawn};
 
-    use chrono::{DateTime, Local};
+    use chrono::NaiveDateTime;
     use serde_json::{json, Value};
 
     use crate::{
@@ -272,7 +272,7 @@ mod tests {
     }
 
     fn create_time_event(
-        now: DateTime<Local>,
+        now: NaiveDateTime,
         name: &str,
         event_id: Option<String>,
         next_event: Option<String>,
@@ -281,10 +281,7 @@ mod tests {
         ReferencingEvent {
             name: name.to_string(),
             event_type: EventType::Time(TimeEvent {
-                execute_time: ExecuteTime::Time((
-                    now.naive_local().time(),
-                    now.naive_local().time().to_string(),
-                )),
+                execute_time: ExecuteTime::Time((now.time(), now.time().to_string())),
                 event_id,
             }),
             next_event: next_event.map(NextEvent::Name),
@@ -294,7 +291,7 @@ mod tests {
     }
 
     fn create_repeat_event(
-        now: DateTime<Local>,
+        now: NaiveDateTime,
         name: &str,
         event_id: Option<String>,
         next_event: Option<String>,
@@ -303,10 +300,7 @@ mod tests {
         ReferencingEvent {
             name: name.to_string(),
             event_type: EventType::Repeat(TimeEvent {
-                execute_time: ExecuteTime::Time((
-                    now.naive_local().time(),
-                    now.naive_local().time().to_string(),
-                )),
+                execute_time: ExecuteTime::Time((now.time(), now.time().to_string())),
                 event_id,
             }),
             next_event: next_event.map(NextEvent::Name),

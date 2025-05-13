@@ -1,31 +1,39 @@
 use anyhow::{anyhow, bail, Context};
 use clap::{Parser, ValueHint};
-use core::time::Duration;
 use env_logger::Env;
 use hvents::config::{init_location, now, ClientConfiguration, Config, PoolId};
 use hvents::database::{self, KeyValueStore};
+#[cfg(feature = "tiny_http")]
 use hvents::events::api_listen::HttpQueue;
 use hvents::events::{EventMap, EventName, EventType, Events, NextEvent, ReferencingEvent};
+#[cfg(feature = "notify")]
 use hvents::executors::file::file_changed_executor;
+#[cfg(feature = "tiny_http")]
 use hvents::executors::http::http_executor;
+#[cfg(feature = "rumqttc")]
 use hvents::executors::mqtt::mqtt_executor;
 use hvents::executors::queue::event_executor;
 use hvents::executors::time::timed_executor;
+#[cfg(feature = "reqwest")]
 use hvents::pools::api::ClientPool;
+#[cfg(feature = "tiny_http")]
 use hvents::pools::http::HttpQueuePool;
+#[cfg(feature = "rumqttc")]
 use hvents::pools::mqtt::MqttPool;
+#[cfg(feature = "handlebars")]
 use hvents::renderer::load_handlebars;
 use indexmap::IndexMap;
 use log::{debug, info};
 use metrics::gauge;
+#[cfg(feature = "notify")]
 use notify::{RecommendedWatcher, Watcher};
 use std::fs::File;
 use std::path::PathBuf;
 use std::{sync::mpsc, thread};
 
-#[cfg(target_os = "linux")]
+#[cfg(feature = "evdev")]
 use hvents::executors::evdev::evdev_executor;
-#[cfg(target_os = "linux")]
+#[cfg(feature = "evdev")]
 use log::error;
 
 #[derive(Parser)]
@@ -43,7 +51,7 @@ fn main() -> Result<(), anyhow::Error> {
     let f = File::open(&args.config)
         .with_context(|| anyhow!("Unable to load main {} file", args.config.to_string_lossy()))?;
     let config: Config = serde_yaml::from_reader(f)?;
-    #[cfg(feature = "metrics")]
+    #[cfg(all(feature = "metrics", feature = "handlebars"))]
     let recorder = if let Some(m) = config.metrics {
         otlp_metrics_exporter::install_recorder(m.service_name, m.service_version, m.instance_id)
             .into()
@@ -84,34 +92,41 @@ fn main() -> Result<(), anyhow::Error> {
 
     validate_events(&events, &config.start_with, &config.http, &config.devices)?;
 
+    #[cfg(feature = "handlebars")]
     #[allow(unused_mut)]
     let mut handlebars = load_handlebars();
-    #[cfg(feature = "metrics")]
+    #[cfg(all(feature = "metrics", feature = "handlebars"))]
     if let Some(r) = recorder {
         hvents::renderer::add_metrics(&mut handlebars, r);
     }
 
     let (queue_tx, queue_rx) = mpsc::channel();
     let (timer_tx, timer_rx) = mpsc::channel();
+    #[cfg(feature = "notify")]
     let (file_tx, file_rx) = mpsc::channel();
     let database = database::init(config.restore.as_deref());
+    #[cfg(feature = "tiny_http")]
     let mut http_queue_pool = HttpQueuePool::default();
+    #[cfg(feature = "rumqttc")]
     let mut mqtt_client_pool = MqttPool::default();
+    #[cfg(feature = "reqwest")]
     let mut request_client_pool = ClientPool::default();
 
+    #[cfg(feature = "notify")]
     let watcher = if events
         .iter()
         .any(|e| matches!(e.event_type, hvents::events::EventType::Watch(_)))
     {
         RecommendedWatcher::new(
             file_tx,
-            notify::Config::default().with_poll_interval(Duration::from_millis(1000)),
+            notify::Config::default().with_poll_interval(core::time::Duration::from_millis(1000)),
         )?
         .into()
     } else {
         None
     };
 
+    #[cfg(feature = "reqwest")]
     if config.api.is_empty() {
         request_client_pool.configure(
             "default".to_string(),
@@ -127,7 +142,9 @@ fn main() -> Result<(), anyhow::Error> {
 
     thread::scope(|s| -> Result<(), anyhow::Error> {
         let mut handle_count = 0;
+        #[cfg(feature = "rumqttc")]
         let mut mqtt_handles = Vec::new();
+        #[cfg(feature = "rumqttc")]
         for (pool_id, mqtt_client) in config.mqtt {
             let connection = mqtt_client_pool.configure(pool_id, mqtt_client);
             let queue_tx = queue_tx.clone();
@@ -136,9 +153,9 @@ fn main() -> Result<(), anyhow::Error> {
             handle_count += 1;
         }
 
-        #[cfg(target_os = "linux")]
+        #[cfg(feature = "evdev")]
         let mut device_handles = Vec::new();
-        #[cfg(target_os = "linux")]
+        #[cfg(feature = "evdev")]
         for (_, device_path) in config.devices {
             let queue_tx = queue_tx.clone();
             let h = s.spawn(|| {
@@ -154,6 +171,7 @@ fn main() -> Result<(), anyhow::Error> {
             handle_count += 1;
         }
 
+        #[cfg(feature = "notify")]
         let _files_changed_handle = if watcher.is_some() {
             handle_count += 1;
             s.spawn(|| file_changed_executor(&events, queue_tx.clone(), file_rx))
@@ -161,13 +179,22 @@ fn main() -> Result<(), anyhow::Error> {
         } else {
             None
         };
+        #[cfg(feature = "tiny_http")]
         let mut http_handles = Vec::new();
+        #[cfg(feature = "tiny_http")]
         for (pool_id, listen) in &config.http {
             let http_queue = HttpQueue::default();
             let pool_queue = http_queue.clone();
             http_queue_pool.configure(pool_id.clone(), pool_queue)?;
             let h = s.spawn(|| {
-                http_executor(http_queue, listen, &events, queue_tx.clone(), &handlebars)
+                http_executor(
+                    http_queue,
+                    listen,
+                    &events,
+                    queue_tx.clone(),
+                    #[cfg(feature = "handlebars")]
+                    &handlebars,
+                )
             });
             http_handles.push(h);
             handle_count += 1;
@@ -180,10 +207,15 @@ fn main() -> Result<(), anyhow::Error> {
                 queue_rx,
                 queue_tx.clone(),
                 timer_tx,
+                #[cfg(feature = "notify")]
                 watcher,
+                #[cfg(feature = "rumqttc")]
                 mqtt_client_pool,
+                #[cfg(feature = "reqwest")]
                 request_client_pool,
+                #[cfg(feature = "tiny_http")]
                 http_queue_pool,
+                #[cfg(feature = "handlebars")]
                 &handlebars,
             )
         });
@@ -252,6 +284,7 @@ fn validate_events(
     }
 
     // validate http
+    #[cfg(feature = "tiny_http")]
     if http_listen.is_empty() {
         if let Some(e) = events
             .iter()
@@ -263,7 +296,7 @@ fn validate_events(
 
     // validate scan codes
     if devices.is_empty() {
-        #[cfg(target_os = "linux")]
+        #[cfg(feature = "evdev")]
         if let Some(e) = events
             .iter()
             .find(|e| matches!(e.event_type, EventType::ScanCodeRead(_)))
@@ -273,12 +306,15 @@ fn validate_events(
     }
 
     // validate watch
+    #[cfg(feature = "notify")]
     let watch_event = events
         .iter()
         .find(|e| matches!(e.event_type, EventType::Watch(_)));
+    #[cfg(feature = "notify")]
     let file_change_event = events
         .iter()
         .find(|e| matches!(e.event_type, EventType::FileChanged(_)));
+    #[cfg(feature = "notify")]
     if watch_event.is_some() != file_change_event.is_some() {
         if let Some(w) = watch_event {
             bail!(

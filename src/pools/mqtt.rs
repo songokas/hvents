@@ -16,7 +16,7 @@ impl MqttPool {
         let mut mqtt_options = MqttOptions::new(
             config
                 .client_id
-                .unwrap_or_else(|| format!("{pool_id}-{}", now().timestamp_millis())),
+                .unwrap_or_else(|| format!("{pool_id}-{}", now().and_utc().timestamp_millis())),
             &config.host,
             config.port,
         );
