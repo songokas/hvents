@@ -178,7 +178,7 @@ events:
             method: post
             request_content: text
             response_content: text
-        data: call_endpoint_a
+        data: caller_a_data_
         next_event: write_to_file
     schedule_call_endpoint_b:
         time: in 2 seconds
@@ -189,7 +189,8 @@ events:
             method: post
             request_content: text
             response_content: text
-        data: call_endpoint_b
+        data: caller_b_data_
+        merge_data: yes
         next_event: write_to_file
     return_response_a:
         api_listen:
@@ -197,7 +198,7 @@ events:
             method: post
             request_content: text
             response_content: text
-        data: return_response_a
+        data: server_response_a_
         next_event: write_to_file
     return_response_b:
         api_listen:
@@ -206,7 +207,7 @@ events:
             request_content: text
             response_content: text
             pool_id: b
-        data: return_response_b
+        data: server_response_b_
         next_event: write_to_file
     
     write_to_file:
@@ -230,7 +231,7 @@ EOF
 
     $BIN <(echo -n "$config") & pids+=($!)
     sleep 5
-    assert_file_content "$file" "call_endpoint_areturn_response_acall_endpoint_areturn_response_acall_endpoint_breturn_response_bcall_endpoint_breturn_response_b"
+    assert_file_content "$file" "caller_a_data_caller_a_data_caller_b_data_caller_b_data_server_response_b_"
     kill "$pids"
 }
 
@@ -322,7 +323,7 @@ EOF
 }
 
 test_event_queue_does_not_block() {
-    echo "test_command"
+    echo "test_event_queue_does_not_block"
     local file="/tmp/_test_write_no_block"
     local data="`rustc --version`
 "
@@ -355,6 +356,82 @@ EOF
     $BIN <(echo -n "$config") & pids+=($!)
     sleep 1
     assert_file_content "$file" "print_out"
+    kill "$pids"
+}
+
+test_merge_policies() {
+    echo test_merge_policies
+    local file="/tmp/_test_merge_policies"
+    local config=$(cat <<EOF
+events:
+    run_command1:
+        execute:
+            command: echo
+            args: ["1"]
+        next_event: print_out_with_data
+    run_command2:
+        execute:
+            command: echo
+            args: ["2"]
+        next_event: print_out_no_data
+    run_command3:
+        execute:
+            command: echo
+            args: ["3"]
+        next_event: print_out_merge
+    run_command4:
+        execute:
+            command: echo
+            args: ["4"]
+        next_event: print_out_overwrite
+    run_command5:
+        execute:
+            command: echo
+            args: ["5"]
+        next_event: print_out_no_merge
+    print_out_with_data:
+        time: in 1 second
+        data: print_out_with_data
+        next_event: write_to_file
+    print_out_no_data:
+        time: in 2 seconds
+        next_event: write_to_file
+    print_out_merge:
+        time: in 3 seconds
+        data: print_out_merge
+        merge_data: yes
+        next_event: write_to_file
+    print_out_overwrite:
+        time: in 4 seconds
+        data: print_out_overwrite
+        merge_data: overwrite
+        next_event: write_to_file
+    print_out_no_merge:
+        time: in 5 seconds
+        data: print_out_no_merge
+        merge_data: no
+        next_event: write_to_file
+    write_to_file:
+        file_write:
+            file: $file
+            mode: append
+start_with:
+    - run_command1
+    - run_command2
+    - run_command3
+    - run_command4
+    - run_command5
+EOF
+)
+
+    local pids=()
+
+    rm "$file" || true
+
+    $BIN <(echo -n "$config") & pids+=($!)
+    sleep 5
+    local expected=$(echo -e "print_out_with_data2\nprint_out_merge3\n4\nprint_out_no_merge")
+    assert_file_content "$file" "$expected"
     kill "$pids"
 }
 

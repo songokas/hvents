@@ -39,7 +39,7 @@ pub fn file_changed_executor(
             }
             Err(e) => {
                 counter!("hvents.filesystem.errors").increment(1);
-                error!("File changed error: {:?}", e);
+                error!("File changed error: {e:?}");
             }
         }
     }
@@ -195,6 +195,7 @@ mod tests {
             }),
             data: Data::Json(data),
             name: name.to_string(),
+            merge_data: crate::events::MergePolicy::Yes,
             ..ReferencingEvent::default()
         }
     }

@@ -312,6 +312,7 @@ mod tests {
                 event_id: None,
             }),
             data: Data::Json(data),
+            merge_data: crate::events::MergePolicy::Yes,
             name: name.to_string(),
             ..Default::default()
         }
@@ -339,6 +340,7 @@ mod tests {
             }),
             next_event: next_event.map(NextEvent::Name),
             data: Data::Json(data),
+            merge_data: crate::events::MergePolicy::Yes,
             name: name.to_string(),
             ..Default::default()
         }

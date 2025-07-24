@@ -17,15 +17,22 @@ Supports:
 amd64
 
 ```
-wget https://github.com/songokas/hvents/releases/download/v0.4.1/hvents_0.4.1_amd64.deb \
-  && sudo apt install ./hvents_0.4.1_amd64.deb
+wget https://github.com/songokas/hvents/releases/download/v0.5.0/hvents_0.5.0_amd64.deb \
+  && sudo apt install ./hvents_0.5.0_amd64.deb
 ```
 
 armhf
 
 ```
-wget https://github.com/songokas/hvents/releases/download/v0.4.1/hvents_0.4.1_armhf.deb \
-  && sudo apt install ./hvents_0.4.1_armhf.deb
+wget https://github.com/songokas/hvents/releases/download/v0.5.0/hvents_0.5.0_armhf.deb \
+  && sudo apt install ./hvents_0.5.0_armhf.deb
+```
+
+arm64
+
+```
+wget https://github.com/songokas/hvents/releases/download/v0.5.0/hvents_0.5.0_arm64.deb \
+  && sudo apt install ./hvents_0.5.0_arm64.deb
 ```
 
 ## Download binary
@@ -391,12 +398,19 @@ Template helpers available
 
 {{otlp-metrics 600}} - output metrics that changed <= 600 seconds ago
 
+{{lookup-word "1 2 3" 1 " "}} - lookup word by index after splitting it with a delimiter
+
 default handlebar helpers
 
 ## Event references and data
 
-Each event can reference next event and define data, which is merged together
-as it goes through the chain
+Each event can reference a next event and define its data, which is merged together
+as it goes through the chain depending on the merge policy
+
+- merge_data: yes - always try to merge data
+- merge_data: no - do not merge data
+- merge_data: overwrite - overwrite any data defined for the event
+- merge_data: yes_if_empty - merge data only if no data is defined for the event
 
 example:
 
@@ -408,11 +422,13 @@ subscribe:
   next_event: schedule_writing
 schedule_writing:
   time: 8:00
-  next_event: write_to_file
   data: schedule_writing_data
+  merge_data: yes
+  next_event: write_to_file
 write_to_file:
   file_write: /tmp/test3
   data: write_to_file_data
+  merge_data: yes
 ```
 
 would write

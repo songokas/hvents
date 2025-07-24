@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2025-07-24
+
+### Added
+
+- more mqtt subscription matching capabilities (matching a list and fuzzy matches)
+
+### Changed
+
+- command event remove empty command line arguments before execution
+- default merge policy for data - merge only if data is not defined (breaking change)
+- mqtt subscription event: pass own data to the next event
+
 ## [0.4.1] - 2025-05-13
 
 ### Changed

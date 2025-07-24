@@ -86,6 +86,11 @@ impl Data {
 
     pub fn merge_with_policy(&mut self, data: Data, merge_data: MergePolicy) {
         match merge_data {
+            MergePolicy::YesIfEmpty => {
+                if self == &Self::Empty {
+                    self.merge(data);
+                }
+            }
             MergePolicy::Yes => self.merge(data),
             MergePolicy::No => (),
             MergePolicy::Overwrite => *self = data,

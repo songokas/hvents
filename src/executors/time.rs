@@ -286,6 +286,7 @@ mod tests {
             }),
             next_event: next_event.map(NextEvent::Name),
             data: crate::events::data::Data::Json(data),
+            merge_data: crate::events::MergePolicy::Yes,
             ..ReferencingEvent::default()
         }
     }
@@ -305,6 +306,7 @@ mod tests {
             }),
             next_event: next_event.map(NextEvent::Name),
             data: crate::events::data::Data::Json(data),
+            merge_data: crate::events::MergePolicy::Yes,
             ..ReferencingEvent::default()
         }
     }

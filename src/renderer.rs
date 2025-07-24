@@ -14,6 +14,7 @@ use crate::{
 pub fn load_handlebars() -> Handlebars<'static> {
     let mut handlebars = Handlebars::new();
     handlebars.register_helper("date-time-format", Box::new(date_time_helper));
+    handlebars.register_helper("lookup-word", Box::new(lookup_word));
     handlebars
 }
 
@@ -87,8 +88,42 @@ fn date_time_helper(
             ParseResult::DateTime(d) => d.format(&format),
         };
     let mut time = String::new();
-    write!(time, "{}", time_format).map_err(|e| RenderErrorReason::Other(e.to_string()))?;
+    write!(time, "{time_format}").map_err(|e| RenderErrorReason::Other(e.to_string()))?;
     out.write(&time)?;
+    Ok(())
+}
+
+fn lookup_word(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
+    let data = h
+        .param(0)
+        .ok_or(RenderErrorReason::ParamNotFoundForIndex("lookup-word", 0))?
+        .value()
+        .render();
+
+    let index =
+        h.param(1)
+            .ok_or(RenderErrorReason::ParamNotFoundForIndex("lookup-word", 1))?
+            .value()
+            .as_u64()
+            .ok_or(RenderErrorReason::ParamNotFoundForIndex("lookup-word", 1))? as usize;
+
+    let delimiter = h
+        .param(2)
+        .ok_or(RenderErrorReason::ParamNotFoundForIndex("lookup-word", 2))?
+        .value()
+        .render();
+
+    for (windex, word) in data.split(&delimiter).enumerate() {
+        if windex == index {
+            out.write(word)?;
+        }
+    }
     Ok(())
 }
 
@@ -148,5 +183,27 @@ mod tests {
         let template = r#"{{date-time-format}}"#;
         let result = handlebars.render_template(template, &data);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_lookup_word() {
+        let handlebars = load_handlebars();
+        let data = "this many words";
+
+        let template = r#"{{lookup-word this 1 " "}}"#;
+        let result = handlebars.render_template(template, &data).unwrap();
+        assert_eq!(result, "many");
+
+        let template = r#"{{lookup-word this 2 " "}}"#;
+        let result = handlebars.render_template(template, &data).unwrap();
+        assert_eq!(result, "words");
+
+        let template = r#"{{lookup-word this 3 " "}}"#;
+        let result = handlebars.render_template(template, &data).unwrap();
+        assert_eq!(result, "");
+
+        let template = r#"{{lookup-word this 2 "a"}}"#;
+        let result = handlebars.render_template(template, &data).unwrap();
+        assert_eq!(result, "");
     }
 }

@@ -206,9 +206,9 @@ fn parse_sunrise_sunset(s: &str, lat: f64, long: f64) -> Result<ExecuteTime, Par
 impl Display for ExecuteTime {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::DateTime((d, _)) => write!(f, "{}", d),
-            Self::Date((d, _)) => write!(f, "{}", d),
-            Self::Time((d, _)) => write!(f, "{}", d),
+            Self::DateTime((d, _)) => write!(f, "{d}"),
+            Self::Date((d, _)) => write!(f, "{d}"),
+            Self::Time((d, _)) => write!(f, "{d}"),
         }
     }
 }

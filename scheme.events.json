@@ -35,6 +35,33 @@
                         },
                         "body": {
                             "type": "string"
+                        },
+                        "body_matches_any": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "body_contains_any": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "fuzzy_matches": {
+                            "type": "string"
+                        },
+                        "fuzzy_matches_any": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "fuzzy_threshold": {
+                            "type": "number",
+                            "default": 0.5,
+                            "minimum": 0.0,
+                            "maximum": 1.0
                         }
                     }
                 },
@@ -261,6 +288,9 @@
                         "string",
                         "object"
                     ]
+                },
+                "metadata": {
+                    "type": "object"
                 },
                 "state": {
                     "type": "object",

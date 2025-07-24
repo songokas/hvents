@@ -66,6 +66,7 @@ fn handle_incoming(events: &Events, topic: &str, payload: &[u8]) -> Option<Refer
         })?;
 
     if let Some(mut event) = events.get_next_event(event_associated) {
+        event.merge(event_associated.data.clone());
         event.try_merge_bytes(payload);
         let mut metadata = event_associated.metadata.clone();
         metadata.merge(json!({ event_associated.name.as_str(): {"topic": topic, "segments": topic.split('/').collect::<Vec<&str>>() }}).into());
@@ -146,6 +147,7 @@ mod tests {
                 topic: topic.to_string(),
                 body: body.into(),
                 pool_id: Default::default(),
+                fuzzy_threshold: 0f32,
             }),
             next_event: event.map(NextEvent::Name),
             ..Default::default()

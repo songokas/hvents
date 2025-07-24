@@ -183,9 +183,10 @@ impl From<&'static str> for NextEvent {
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, Copy)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "snake_case")]
 pub enum MergePolicy {
     #[default]
+    YesIfEmpty,
     Yes,
     No,
     Overwrite,
@@ -198,6 +199,11 @@ impl ReferencingEvent {
 
     pub fn try_merge_bytes(&mut self, bytes: &[u8]) {
         match self.merge_data {
+            MergePolicy::YesIfEmpty => {
+                if self.data == Data::Empty {
+                    self.data.try_merge_bytes(bytes)
+                }
+            }
             MergePolicy::Yes => self.data.try_merge_bytes(bytes),
             MergePolicy::No => (),
             MergePolicy::Overwrite => self.data = Data::Bytes(bytes.to_vec()),
@@ -222,7 +228,7 @@ impl ReferencingEvent {
 
     fn generated(name: &str, template: String) -> ReferencingEvent {
         Self {
-            name: format!("generated_from_{}", name),
+            name: format!("generated_from_{name}"),
             next_event: NextEvent::Template(template).into(),
             event_type: EventType::Forward,
             metadata: Default::default(),
@@ -588,6 +594,7 @@ mod tests {
                 topic: "topic".to_string(),
                 body: None,
                 pool_id: "".to_string(),
+                fuzzy_threshold: 0f32,
             }),
             next_event: None,
             metadata: json!({}).into(),

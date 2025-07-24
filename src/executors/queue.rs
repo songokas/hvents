@@ -177,7 +177,7 @@ pub fn event_executor(
                             }
                         };
                         if payload.is_empty() {
-                            info!("Empty body provided for topic={}. Ignoring", topic);
+                            info!("Empty body provided for topic={topic}. Ignoring");
                             continue;
                         }
                         counter!("hvents.mqtt.client.sent.messages").increment(1);
@@ -367,6 +367,7 @@ pub fn event_executor(
                             }
                         };
                     }
+                    args.retain(|s| !s.trim().is_empty());
 
                     counter!("hvents.command.executed", "command" => c.command.to_string())
                         .increment(1);
@@ -521,6 +522,7 @@ mod tests {
                 }
                 .into(),
                 next_event: NextEvent::from("test2").into(),
+                merge_data: crate::events::MergePolicy::Yes,
                 ..ReferencingEvent::default()
             },
             ReferencingEvent {
@@ -530,6 +532,7 @@ mod tests {
                 }),
                 name: "test2".to_string(),
                 next_event: NextEvent::Template("{{state.next_event}}".to_string()).into(),
+                merge_data: crate::events::MergePolicy::Yes,
                 ..ReferencingEvent::default()
             },
             ReferencingEvent {
@@ -538,6 +541,7 @@ mod tests {
                     event_id: None,
                 }),
                 name: "test3".to_string(),
+                merge_data: crate::events::MergePolicy::Yes,
                 ..ReferencingEvent::default()
             },
         ];
@@ -587,6 +591,7 @@ mod tests {
             },
             next_event: next_event.map(NextEvent::Name),
             data: Data::Json(data),
+            merge_data: crate::events::MergePolicy::Yes,
             name,
             ..ReferencingEvent::default()
         }
