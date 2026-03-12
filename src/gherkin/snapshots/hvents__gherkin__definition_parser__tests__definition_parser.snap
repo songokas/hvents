@@ -16,9 +16,9 @@ snapshot_kind: text
   "Turn on ac periodically state key \"bathroom_temperature\" is below \"20\"bathroom,20":
     name: "Turn on ac periodically state key \"bathroom_temperature\" is below \"20\"bathroom,20"
     comparison:
-      data_to_compare: State
+      data_to_compare: state
       key: bathroom_temperature
-      operation: Lt
+      operation: lt
       value: "20"
     next_event: "Turn on ac periodically state key \"bathroom_internal_state\" is equal to \"off\"bathroom,20"
     metadata: ~
@@ -28,9 +28,9 @@ snapshot_kind: text
   "Turn on ac periodically state key \"bathroom_internal_state\" is equal to \"off\"bathroom,20":
     name: "Turn on ac periodically state key \"bathroom_internal_state\" is equal to \"off\"bathroom,20"
     comparison:
-      data_to_compare: State
+      data_to_compare: state
       key: bathroom_internal_state
-      operation: Equal
+      operation: equal
       value: "off"
     next_event: "Turn on ac periodically mqtt publish to topic \"rooms/bathroom/set\" with body \"1\"bathroom,20"
     metadata: ~
@@ -82,9 +82,9 @@ snapshot_kind: text
   "Turn on ac periodically state key \"ballroom_temperature\" is below \"22\"ballroom,22":
     name: "Turn on ac periodically state key \"ballroom_temperature\" is below \"22\"ballroom,22"
     comparison:
-      data_to_compare: State
+      data_to_compare: state
       key: ballroom_temperature
-      operation: Lt
+      operation: lt
       value: "22"
     next_event: "Turn on ac periodically state key \"ballroom_internal_state\" is equal to \"off\"ballroom,22"
     metadata: ~
@@ -94,9 +94,9 @@ snapshot_kind: text
   "Turn on ac periodically state key \"ballroom_internal_state\" is equal to \"off\"ballroom,22":
     name: "Turn on ac periodically state key \"ballroom_internal_state\" is equal to \"off\"ballroom,22"
     comparison:
-      data_to_compare: State
+      data_to_compare: state
       key: ballroom_internal_state
-      operation: Equal
+      operation: equal
       value: "off"
     next_event: "Turn on ac periodically mqtt publish to topic \"rooms/ballroom/set\" with body \"1\"ballroom,22"
     metadata: ~
@@ -148,9 +148,9 @@ snapshot_kind: text
   "Turn off ac periodically state key \"bathroom_temperature\" is above \"20\"bathroom":
     name: "Turn off ac periodically state key \"bathroom_temperature\" is above \"20\"bathroom"
     comparison:
-      data_to_compare: State
+      data_to_compare: state
       key: bathroom_temperature
-      operation: Gt
+      operation: gt
       value: "20"
     next_event: "Turn off ac periodically state key \"bathroom_internal_state\" is equal to \"on\"bathroom"
     metadata: ~
@@ -160,9 +160,9 @@ snapshot_kind: text
   "Turn off ac periodically state key \"bathroom_internal_state\" is equal to \"on\"bathroom":
     name: "Turn off ac periodically state key \"bathroom_internal_state\" is equal to \"on\"bathroom"
     comparison:
-      data_to_compare: State
+      data_to_compare: state
       key: bathroom_internal_state
-      operation: Equal
+      operation: equal
       value: "on"
     next_event: "Turn off ac periodically mqtt publish to topic \"rooms/bathroom/set\" with body \"0\"bathroom"
     metadata: ~
@@ -214,9 +214,9 @@ snapshot_kind: text
   "Turn off ac periodically state key \"ballroom_temperature\" is above \"20\"ballroom":
     name: "Turn off ac periodically state key \"ballroom_temperature\" is above \"20\"ballroom"
     comparison:
-      data_to_compare: State
+      data_to_compare: state
       key: ballroom_temperature
-      operation: Gt
+      operation: gt
       value: "20"
     next_event: "Turn off ac periodically state key \"ballroom_internal_state\" is equal to \"on\"ballroom"
     metadata: ~
@@ -226,9 +226,9 @@ snapshot_kind: text
   "Turn off ac periodically state key \"ballroom_internal_state\" is equal to \"on\"ballroom":
     name: "Turn off ac periodically state key \"ballroom_internal_state\" is equal to \"on\"ballroom"
     comparison:
-      data_to_compare: State
+      data_to_compare: state
       key: ballroom_internal_state
-      operation: Equal
+      operation: equal
       value: "on"
     next_event: "Turn off ac periodically mqtt publish to topic \"rooms/ballroom/set\" with body \"0\"ballroom"
     metadata: ~
