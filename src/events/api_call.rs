@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use log::debug;
 use reqwest::{
     blocking::Client,
-    header::{HeaderMap, HeaderValue, CONTENT_TYPE},
+    header::{CONTENT_TYPE, HeaderMap, HeaderValue},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -64,13 +64,14 @@ impl ApiCallEvent {
             RequestMethod::Get => client.get(&self.url).headers(headers).send()?,
         };
         debug!("Response from {} {response:?}", self.url);
-        let meta = json!({ name: {"headers": response.headers().into_iter().filter_map(|(k, v)| Some((k.as_str(), v.to_str().ok()?))).collect::<IndexMap<&str, &str>>()}}).into();
+        let mut meta = json!({"headers": response.headers().into_iter().filter_map(|(k, v)| Some((k.as_str(), v.to_str().ok()?))).collect::<IndexMap<&str, &str>>()});
+        meta[name] = meta.clone();
         let bytes = response.bytes()?;
         let data = match &self.response_content {
             ResponseContent::Json => Data::Json(serde_json::from_slice(&bytes)?),
             ResponseContent::Text => Data::String(String::from_utf8_lossy(&bytes).to_string()),
             ResponseContent::Bytes => Data::Bytes(bytes.to_vec()),
         };
-        Ok((data, meta))
+        Ok((data, meta.into()))
     }
 }

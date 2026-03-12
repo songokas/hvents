@@ -1,0 +1,96 @@
+# yaml-language-server: $schema=../hvents.schema.json
+
+events:
+  schedule:
+    repeat:
+      execute_time: in 20 seconds
+    next_event_template: |
+      {{#if (lt (lookup state (concat data '_temperature')) 20)}}
+        {{#if (eq (lookup state (concat data '_internal_state')) 'off')}}
+          turn_on
+        {{else if (not (lookup state (concat data '_internal_state')))}}
+          turn_on
+        {{/if}}
+      {{else if (gt (lookup state (concat data '_temperature')) 21)}}
+        {{#if (eq (lookup state (concat data '_internal_state')) 'on')}}
+          turn_off
+        {{/if}}
+      {{/if}}
+
+  turn_on:
+    mqtt_publish:
+      topic: "rooms/{{ data }}/set"
+      body: "1"
+    state:
+      replace:
+        "{{data}}_internal_state": "on"
+
+  turn_off:
+    mqtt_publish:
+      topic: "rooms/{{ data }}/set"
+      body: "0"
+    state:
+      replace:
+        "{{data}}_internal_state": "off"
+
+  obtain_temperature:
+    mqtt_subscribe:
+      topic: "temperatures/+/get"
+    next_event: save_temperature
+
+  obtain_power_state:
+    mqtt_subscribe:
+      topic: "rooms/+/get"
+    next_event: save_power_state
+
+  save_temperature:
+    print:
+      output: stdout
+      template: "Temperature for room {{metadata.obtain_temperature.segments.1}} received. Current state {{#each state}}{{@key}}={{this}} {{/each}}"
+    state:
+      replace:
+        "{{metadata.obtain_temperature.segments.1}}_temperature": "{{data}}"
+
+  save_power_state:
+    print:
+      output: stdout
+      template: "Power state for room {{metadata.obtain_power_state.segments.1}} received. Current state {{#each state}}{{@key}}={{this}} {{/each}}"
+    state:
+      replace:
+        "{{metadata.obtain_power_state.segments.1}}_external_state": "{{data}}"
+    next_event: schedule_internal_state_change
+    
+  on_received:
+    mqtt_subscribe:
+      topic: "rooms/+/set"
+    data: "Received temperature:"
+    next_event: print_out
+
+  schedule_internal_state_change:
+    time: in 30 seconds
+    next_event: set_internal_state
+
+  set_internal_state:
+    print: 
+      output: stdout
+      template: "Internal state changed {{metadata.obtain_power_state.segments.1}}_internal_state: {{data}}"
+    state:
+      "{{metadata.obtain_power_state.segments.1}}_internal_state": "{{data}}"
+      
+  schedule_all:
+    forward_data:
+      - bathroom
+      - ballroom
+    next_event: schedule
+
+  print_out:
+    print: stdout
+
+start_with:
+  - schedule_all
+  - obtain_temperature
+  - obtain_power_state
+
+mqtt:
+  default:
+    host: localhost

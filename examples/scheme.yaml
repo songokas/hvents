@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../scheme.json
+# yaml-language-server: $schema=../hvents.schema.json
 
 # events are loaded from specified files with prefix from the key
 # optional
@@ -89,7 +89,7 @@ start_with:
 # optional
 mqtt:
   default: # pool_id - defines which client to use for mqtt events
-    host: pi.lan
+    host: 127.0.0.1
     port: 1883 # optional
     user: user # optional
     pass: pass # optional

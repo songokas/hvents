@@ -2,8 +2,8 @@ use indexmap::IndexMap;
 use reqwest::blocking::Client;
 
 use crate::config::{ClientConfiguration, PoolId};
-use anyhow::anyhow;
 use anyhow::Result;
+use anyhow::anyhow;
 
 #[derive(Default)]
 pub struct ClientPool {

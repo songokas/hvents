@@ -76,9 +76,10 @@ impl MqttBodyMatch {
     }
 }
 
-fn fuzzy_threshold_default() -> f32 {
+pub fn fuzzy_threshold_default() -> f32 {
     0.75f32
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;

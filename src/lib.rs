@@ -1,7 +1,9 @@
 pub mod config;
 pub mod database;
+pub mod definitions;
 pub mod events;
 pub mod executors;
+pub mod gherkin;
 pub mod pools;
 #[cfg(feature = "handlebars")]
 pub mod renderer;

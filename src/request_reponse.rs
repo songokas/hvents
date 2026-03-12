@@ -1,9 +1,11 @@
 use core::fmt::Display;
 
 use serde::{Deserialize, Serialize};
+use strum::EnumString;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, EnumString)]
 #[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
 pub enum RequestMethod {
     Put,
     Post,
@@ -23,8 +25,9 @@ impl Display for RequestMethod {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, EnumString)]
 #[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
 pub enum RequestContent {
     Json,
     Text,
@@ -42,8 +45,9 @@ impl Display for RequestContent {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, EnumString)]
 #[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
 pub enum ResponseContent {
     Json,
     #[default]

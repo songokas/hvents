@@ -1,7 +1,7 @@
-use core::fmt::Display;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
+use strum::{Display, EnumString};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct FileChangedEvent {
@@ -16,21 +16,14 @@ impl FileChangedEvent {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq, Copy)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq, Copy, EnumString, Display,
+)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum WatchKind {
     Written,
     #[default]
     Created,
     Removed,
-}
-
-impl Display for WatchKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            WatchKind::Written => write!(f, "written"),
-            WatchKind::Created => write!(f, "created"),
-            WatchKind::Removed => write!(f, "removed"),
-        }
-    }
 }

@@ -1,0 +1,387 @@
+---
+source: src/gherkin/definition_parser.rs
+expression: events
+snapshot_kind: text
+---
+- "Turn on ac periodically every \"in 20 seconds\"bathroom,20":
+    name: "Turn on ac periodically every \"in 20 seconds\"bathroom,20"
+    repeat:
+      execute_time: hidden
+      event_id: ~
+    next_event: "Turn on ac periodically state key \"bathroom_temperature\" is below \"20\"bathroom,20"
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Turn on ac periodically state key \"bathroom_temperature\" is below \"20\"bathroom,20":
+    name: "Turn on ac periodically state key \"bathroom_temperature\" is below \"20\"bathroom,20"
+    comparison:
+      data_to_compare: State
+      key: bathroom_temperature
+      operation: Lt
+      value: "20"
+    next_event: "Turn on ac periodically state key \"bathroom_internal_state\" is equal to \"off\"bathroom,20"
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Turn on ac periodically state key \"bathroom_internal_state\" is equal to \"off\"bathroom,20":
+    name: "Turn on ac periodically state key \"bathroom_internal_state\" is equal to \"off\"bathroom,20"
+    comparison:
+      data_to_compare: State
+      key: bathroom_internal_state
+      operation: Equal
+      value: "off"
+    next_event: "Turn on ac periodically mqtt publish to topic \"rooms/bathroom/set\" with body \"1\"bathroom,20"
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Turn on ac periodically mqtt publish to topic \"rooms/bathroom/set\" with body \"1\"bathroom,20":
+    name: "Turn on ac periodically mqtt publish to topic \"rooms/bathroom/set\" with body \"1\"bathroom,20"
+    mqtt_publish:
+      topic: rooms/bathroom/set
+      body: "1"
+      retain: false
+      pool_id: ""
+    next_event: "Turn on ac periodically replace state key \"bathroom_internal_state\" with value \"on\"bathroom,20"
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Turn on ac periodically replace state key \"bathroom_internal_state\" with value \"on\"bathroom,20":
+    name: "Turn on ac periodically replace state key \"bathroom_internal_state\" with value \"on\"bathroom,20"
+    forward: ~
+    next_event: "Turn on ac periodically print to stdout \"Ac is on\"bathroom,20"
+    metadata: ~
+    state:
+      count: ~
+      replace:
+        bathroom_internal_state: "on"
+    data: ~
+    merge_data: yes_if_empty
+  "Turn on ac periodically print to stdout \"Ac is on\"bathroom,20":
+    name: "Turn on ac periodically print to stdout \"Ac is on\"bathroom,20"
+    print:
+      template: Ac is on
+      output: stdout
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Turn on ac periodically every \"in 20 seconds\"ballroom,22":
+    name: "Turn on ac periodically every \"in 20 seconds\"ballroom,22"
+    repeat:
+      execute_time: hidden
+      event_id: ~
+    next_event: "Turn on ac periodically state key \"ballroom_temperature\" is below \"22\"ballroom,22"
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Turn on ac periodically state key \"ballroom_temperature\" is below \"22\"ballroom,22":
+    name: "Turn on ac periodically state key \"ballroom_temperature\" is below \"22\"ballroom,22"
+    comparison:
+      data_to_compare: State
+      key: ballroom_temperature
+      operation: Lt
+      value: "22"
+    next_event: "Turn on ac periodically state key \"ballroom_internal_state\" is equal to \"off\"ballroom,22"
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Turn on ac periodically state key \"ballroom_internal_state\" is equal to \"off\"ballroom,22":
+    name: "Turn on ac periodically state key \"ballroom_internal_state\" is equal to \"off\"ballroom,22"
+    comparison:
+      data_to_compare: State
+      key: ballroom_internal_state
+      operation: Equal
+      value: "off"
+    next_event: "Turn on ac periodically mqtt publish to topic \"rooms/ballroom/set\" with body \"1\"ballroom,22"
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Turn on ac periodically mqtt publish to topic \"rooms/ballroom/set\" with body \"1\"ballroom,22":
+    name: "Turn on ac periodically mqtt publish to topic \"rooms/ballroom/set\" with body \"1\"ballroom,22"
+    mqtt_publish:
+      topic: rooms/ballroom/set
+      body: "1"
+      retain: false
+      pool_id: ""
+    next_event: "Turn on ac periodically replace state key \"ballroom_internal_state\" with value \"on\"ballroom,22"
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Turn on ac periodically replace state key \"ballroom_internal_state\" with value \"on\"ballroom,22":
+    name: "Turn on ac periodically replace state key \"ballroom_internal_state\" with value \"on\"ballroom,22"
+    forward: ~
+    next_event: "Turn on ac periodically print to stdout \"Ac is on\"ballroom,22"
+    metadata: ~
+    state:
+      count: ~
+      replace:
+        ballroom_internal_state: "on"
+    data: ~
+    merge_data: yes_if_empty
+  "Turn on ac periodically print to stdout \"Ac is on\"ballroom,22":
+    name: "Turn on ac periodically print to stdout \"Ac is on\"ballroom,22"
+    print:
+      template: Ac is on
+      output: stdout
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Turn off ac periodically every \"in 20 seconds\"bathroom":
+    name: "Turn off ac periodically every \"in 20 seconds\"bathroom"
+    repeat:
+      execute_time: hidden
+      event_id: ~
+    next_event: "Turn off ac periodically state key \"bathroom_temperature\" is above \"20\"bathroom"
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Turn off ac periodically state key \"bathroom_temperature\" is above \"20\"bathroom":
+    name: "Turn off ac periodically state key \"bathroom_temperature\" is above \"20\"bathroom"
+    comparison:
+      data_to_compare: State
+      key: bathroom_temperature
+      operation: Gt
+      value: "20"
+    next_event: "Turn off ac periodically state key \"bathroom_internal_state\" is equal to \"on\"bathroom"
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Turn off ac periodically state key \"bathroom_internal_state\" is equal to \"on\"bathroom":
+    name: "Turn off ac periodically state key \"bathroom_internal_state\" is equal to \"on\"bathroom"
+    comparison:
+      data_to_compare: State
+      key: bathroom_internal_state
+      operation: Equal
+      value: "on"
+    next_event: "Turn off ac periodically mqtt publish to topic \"rooms/bathroom/set\" with body \"0\"bathroom"
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Turn off ac periodically mqtt publish to topic \"rooms/bathroom/set\" with body \"0\"bathroom":
+    name: "Turn off ac periodically mqtt publish to topic \"rooms/bathroom/set\" with body \"0\"bathroom"
+    mqtt_publish:
+      topic: rooms/bathroom/set
+      body: "0"
+      retain: false
+      pool_id: ""
+    next_event: "Turn off ac periodically replace state key \"bathroom_internal_state\" with value \"off\"bathroom"
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Turn off ac periodically replace state key \"bathroom_internal_state\" with value \"off\"bathroom":
+    name: "Turn off ac periodically replace state key \"bathroom_internal_state\" with value \"off\"bathroom"
+    forward: ~
+    next_event: "Turn off ac periodically print to stdout \"Ac is off\"bathroom"
+    metadata: ~
+    state:
+      count: ~
+      replace:
+        bathroom_internal_state: "off"
+    data: ~
+    merge_data: yes_if_empty
+  "Turn off ac periodically print to stdout \"Ac is off\"bathroom":
+    name: "Turn off ac periodically print to stdout \"Ac is off\"bathroom"
+    print:
+      template: Ac is off
+      output: stdout
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Turn off ac periodically every \"in 20 seconds\"ballroom":
+    name: "Turn off ac periodically every \"in 20 seconds\"ballroom"
+    repeat:
+      execute_time: hidden
+      event_id: ~
+    next_event: "Turn off ac periodically state key \"ballroom_temperature\" is above \"20\"ballroom"
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Turn off ac periodically state key \"ballroom_temperature\" is above \"20\"ballroom":
+    name: "Turn off ac periodically state key \"ballroom_temperature\" is above \"20\"ballroom"
+    comparison:
+      data_to_compare: State
+      key: ballroom_temperature
+      operation: Gt
+      value: "20"
+    next_event: "Turn off ac periodically state key \"ballroom_internal_state\" is equal to \"on\"ballroom"
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Turn off ac periodically state key \"ballroom_internal_state\" is equal to \"on\"ballroom":
+    name: "Turn off ac periodically state key \"ballroom_internal_state\" is equal to \"on\"ballroom"
+    comparison:
+      data_to_compare: State
+      key: ballroom_internal_state
+      operation: Equal
+      value: "on"
+    next_event: "Turn off ac periodically mqtt publish to topic \"rooms/ballroom/set\" with body \"0\"ballroom"
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Turn off ac periodically mqtt publish to topic \"rooms/ballroom/set\" with body \"0\"ballroom":
+    name: "Turn off ac periodically mqtt publish to topic \"rooms/ballroom/set\" with body \"0\"ballroom"
+    mqtt_publish:
+      topic: rooms/ballroom/set
+      body: "0"
+      retain: false
+      pool_id: ""
+    next_event: "Turn off ac periodically replace state key \"ballroom_internal_state\" with value \"off\"ballroom"
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Turn off ac periodically replace state key \"ballroom_internal_state\" with value \"off\"ballroom":
+    name: "Turn off ac periodically replace state key \"ballroom_internal_state\" with value \"off\"ballroom"
+    forward: ~
+    next_event: "Turn off ac periodically print to stdout \"Ac is off\"ballroom"
+    metadata: ~
+    state:
+      count: ~
+      replace:
+        ballroom_internal_state: "off"
+    data: ~
+    merge_data: yes_if_empty
+  "Turn off ac periodically print to stdout \"Ac is off\"ballroom":
+    name: "Turn off ac periodically print to stdout \"Ac is off\"ballroom"
+    print:
+      template: Ac is off
+      output: stdout
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Store temperatures mqtt message from topic \"temperatures/+/get\"":
+    name: "Store temperatures mqtt message from topic \"temperatures/+/get\""
+    mqtt_subscribe:
+      topic: temperatures/+/get
+      pool_id: ""
+      fuzzy_threshold: 0.75
+    next_event: "Store temperatures replace state key \"{{ metadata.topic_segments.1 }}_temperature\" with value \"{{ data }}\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Store temperatures replace state key \"{{ metadata.topic_segments.1 }}_temperature\" with value \"{{ data }}\"":
+    name: "Store temperatures replace state key \"{{ metadata.topic_segments.1 }}_temperature\" with value \"{{ data }}\""
+    forward: ~
+    metadata: ~
+    state:
+      count: ~
+      replace:
+        "{{ metadata.topic_segments.1 }}_temperature": "{{ data }}"
+    data: ~
+    merge_data: yes_if_empty
+  "Store power status mqtt message from topic \"rooms/+/get\"":
+    name: "Store power status mqtt message from topic \"rooms/+/get\""
+    mqtt_subscribe:
+      topic: rooms/+/get
+      pool_id: ""
+      fuzzy_threshold: 0.75
+    next_event: "Store power status replace state key \"{{ metadata.topic_segments.1 }}_external_state\" with value \"{{ data }}\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Store power status replace state key \"{{ metadata.topic_segments.1 }}_external_state\" with value \"{{ data }}\"":
+    name: "Store power status replace state key \"{{ metadata.topic_segments.1 }}_external_state\" with value \"{{ data }}\""
+    forward: ~
+    next_event: "Store power status once \"in 1 hour\""
+    metadata: ~
+    state:
+      count: ~
+      replace:
+        "{{ metadata.topic_segments.1 }}_external_state": "{{ data }}"
+    data: ~
+    merge_data: yes_if_empty
+  "Store power status once \"in 1 hour\"":
+    name: "Store power status once \"in 1 hour\""
+    time:
+      execute_time: hidden
+      event_id: ~
+    next_event: "Store power status replace state key \"{{ metadata.topic_segments.1 }}_internal_state\" with value \"{{ data }}\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Store power status replace state key \"{{ metadata.topic_segments.1 }}_internal_state\" with value \"{{ data }}\"":
+    name: "Store power status replace state key \"{{ metadata.topic_segments.1 }}_internal_state\" with value \"{{ data }}\""
+    forward: ~
+    metadata: ~
+    state:
+      count: ~
+      replace:
+        "{{ metadata.topic_segments.1 }}_internal_state": "{{ data }}"
+    data: ~
+    merge_data: yes_if_empty
+  "Send temperature periodically periodically \"in 10 seconds\"":
+    name: "Send temperature periodically periodically \"in 10 seconds\""
+    repeat:
+      execute_time: hidden
+      event_id: ~
+    next_event: "Send temperature periodically execute \"shuf\" with args \"-i 10-22 -n 1\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Send temperature periodically execute \"shuf\" with args \"-i 10-22 -n 1\"":
+    name: "Send temperature periodically execute \"shuf\" with args \"-i 10-22 -n 1\""
+    execute:
+      command: shuf
+      args:
+        - "-i"
+        - 10-22
+        - "-n"
+        - "1"
+      replace_args: {}
+      vars: {}
+      data_type: string
+    next_event: "Send temperature periodically mqtt publish \"{{data}}\" to \"temperatures/bathroom/get\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Send temperature periodically mqtt publish \"{{data}}\" to \"temperatures/bathroom/get\"":
+    name: "Send temperature periodically mqtt publish \"{{data}}\" to \"temperatures/bathroom/get\""
+    mqtt_publish:
+      topic: temperatures/bathroom/get
+      body: "{{data}}"
+      retain: false
+      pool_id: ""
+    next_event: "Send temperature periodically print to stdout \"{{#each state}}{{@key}}={{this}} {{/each}}\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Send temperature periodically print to stdout \"{{#each state}}{{@key}}={{this}} {{/each}}\"":
+    name: "Send temperature periodically print to stdout \"{{#each state}}{{@key}}={{this}} {{/each}}\""
+    print:
+      template: "{{#each state}}{{@key}}={{this}} {{/each}}"
+      output: stdout
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+- - "Turn on ac periodically every \"in 20 seconds\"bathroom,20"
+  - "Turn on ac periodically every \"in 20 seconds\"ballroom,22"
+  - "Turn off ac periodically every \"in 20 seconds\"bathroom"
+  - "Turn off ac periodically every \"in 20 seconds\"ballroom"
+  - "Store temperatures mqtt message from topic \"temperatures/+/get\""
+  - "Store power status mqtt message from topic \"rooms/+/get\""
+  - "Send temperature periodically periodically \"in 10 seconds\""

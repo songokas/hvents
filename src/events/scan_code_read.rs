@@ -1,4 +1,4 @@
-use serde::{de, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScanCodeReadEvent(#[serde(deserialize_with = "deserialize_code")] i32);

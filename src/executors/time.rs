@@ -12,26 +12,31 @@ use metrics::{counter, gauge};
 use crate::{
     config::now,
     database::KeyValueStore,
-    events::{time::COOL_DOWN_DURATION, EventType, Events, ReferencingEvent},
+    events::{EventType, Events, ReferencingEvent, time::COOL_DOWN_DURATION},
 };
 
-pub fn timed_executor<'a>(
-    events: &'a Events,
-    mut events_to_execute: IndexMap<&'a str, ReferencingEvent>,
+pub fn timed_executor(
+    events: &Events,
+    mut events_to_execute: IndexMap<String, ReferencingEvent>,
     timer_rx: Receiver<ReferencingEvent>,
     queue_tx: Sender<ReferencingEvent>,
-    database: impl KeyValueStore,
+    mut database: impl KeyValueStore,
 ) -> Result<(), anyhow::Error> {
-    let mut delay_events: HashMap<&str, Instant> = HashMap::new();
+    let mut delay_events: HashMap<String, Instant> = HashMap::new();
     loop {
         delay_events.retain(|_, d| d.elapsed() <= COOL_DOWN_DURATION);
         for time_event in timer_rx.try_iter() {
             counter!("hvents.scheduler.incoming_events", "event_type" => time_event.event_type.to_string())
                 .increment(1);
 
-            let event_id = events
-                .get_event_id(&time_event.name)
-                .unwrap_or_else(|| panic!("Event {} must exit", time_event.name));
+            let event_id = if time_event.event_id() != time_event.name {
+                time_event.event_id().to_string()
+            } else {
+                events
+                    .get_event_id(&time_event.name)
+                    .unwrap_or_else(|| panic!("Event {} must exit", time_event.name))
+                    .to_string()
+            };
 
             debug!(
                 "Schedule time event with id={event_id} event={} next_event={} execute_time={}",
@@ -42,7 +47,7 @@ pub fn timed_executor<'a>(
                     .map(|t| t.execute_time.to_string())
                     .unwrap_or_else(|| "instant".to_string())
             );
-            database.insert(event_id, &time_event)?;
+            database.insert(&event_id, &time_event)?;
             if let Some(e) = events_to_execute.insert(event_id, time_event) {
                 debug!("Previous event {} with the same id removed", e.name);
             }
@@ -51,12 +56,12 @@ pub fn timed_executor<'a>(
         gauge!("hvents.scheduler.queue").set(events_to_execute.len() as f64);
 
         let now = now();
-        let next_events_to_execute: Vec<(&str, ReferencingEvent)> = events_to_execute
+        let next_events_to_execute: Vec<(String, ReferencingEvent)> = events_to_execute
             .iter()
             .filter_map(|(event_id, event)| {
                 if !delay_events.contains_key(event.event_id()) && event.time_event()?.matches(now)
                 {
-                    Some((*event_id, events.get_next_event(event)?))
+                    Some((event_id.clone(), events.get_next_event(event)?))
                 } else {
                     None
                 }
@@ -66,19 +71,19 @@ pub fn timed_executor<'a>(
         let timeout = next_events_to_execute.is_empty();
         for (event_id, mut next_event) in next_events_to_execute {
             let current_event = events_to_execute
-                .shift_remove(event_id)
+                .shift_remove(&event_id)
                 .expect("event must exist");
 
             next_event.merge(current_event.data.clone());
-            debug!("Queue next event={}", next_event.name);
+            debug!("Queue next event={}", next_event.event_id());
             queue_tx.send(next_event)?;
 
             if let EventType::Repeat(_) = &current_event.event_type {
-                debug!("Requeue same event={}", current_event.name);
+                debug!("Requeue same event={}", current_event.event_id());
                 queue_tx.send(current_event)?;
             }
 
-            database.remove(event_id);
+            database.remove(&event_id);
             delay_events.insert(event_id, Instant::now());
         }
         if timeout {
@@ -102,14 +107,14 @@ mod tests {
     use std::{sync::mpsc::channel, thread::spawn};
 
     use chrono::NaiveDateTime;
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
 
     use crate::{
         config::now,
         database::Store,
         events::{
-            time::{ExecuteTime, TimeEvent},
             EventType, NextEvent,
+            time::{ExecuteTime, TimeEvent},
         },
     };
 
@@ -150,7 +155,7 @@ mod tests {
                 Default::default(),
                 timer_rx,
                 queue_tx,
-                Store::Null,
+                Store::in_memory(),
             )
             .unwrap();
         });
@@ -210,7 +215,7 @@ mod tests {
                 Default::default(),
                 timer_rx,
                 queue_tx,
-                Store::Null,
+                Store::in_memory(),
             )
             .unwrap();
         });
@@ -252,7 +257,7 @@ mod tests {
                 Default::default(),
                 timer_rx,
                 queue_tx,
-                Store::Null,
+                Store::in_memory(),
             )
             .unwrap();
         });

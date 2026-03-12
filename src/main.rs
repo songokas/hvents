@@ -1,7 +1,9 @@
-use anyhow::{anyhow, bail, Context};
+use anyhow::{Context, anyhow, bail};
 use clap::{Parser, ValueHint};
 use env_logger::Env;
-use hvents::config::{init_location, now, ClientConfiguration, Config, PoolId};
+use hvents::config::{
+    ClientConfiguration, Config, DefinitionConfig, PoolId, QueueState, init_location, now,
+};
 use hvents::database::{self, KeyValueStore};
 #[cfg(feature = "tiny_http")]
 use hvents::events::api_listen::HttpQueue;
@@ -12,8 +14,10 @@ use hvents::executors::file::file_changed_executor;
 use hvents::executors::http::http_executor;
 #[cfg(feature = "rumqttc")]
 use hvents::executors::mqtt::mqtt_executor;
-use hvents::executors::queue::event_executor;
+use hvents::executors::queue::{STATE_KEY, event_executor};
 use hvents::executors::time::timed_executor;
+use hvents::gherkin::definition_factory::create_definitions;
+use hvents::gherkin::definition_parser::create_events_from_definitions;
 #[cfg(feature = "reqwest")]
 use hvents::pools::api::ClientPool;
 #[cfg(feature = "tiny_http")]
@@ -23,7 +27,7 @@ use hvents::pools::mqtt::MqttPool;
 #[cfg(feature = "handlebars")]
 use hvents::renderer::load_handlebars;
 use indexmap::IndexMap;
-use log::{debug, info};
+use log::{debug, info, warn};
 use metrics::gauge;
 #[cfg(feature = "notify")]
 use notify::{RecommendedWatcher, Watcher};
@@ -50,7 +54,7 @@ fn main() -> Result<(), anyhow::Error> {
     env_logger::try_init_from_env(Env::default().default_filter_or(args.verbosity))?;
     let f = File::open(&args.config)
         .with_context(|| anyhow!("Unable to load main {} file", args.config.to_string_lossy()))?;
-    let config: Config = serde_yaml::from_reader(f)?;
+    let mut config: Config = serde_yaml::from_reader(f)?;
     #[cfg(all(feature = "metrics", feature = "handlebars"))]
     let recorder = if let Some(m) = config.metrics {
         otlp_metrics_exporter::install_recorder(m.service_name, m.service_version, m.instance_id)
@@ -61,6 +65,14 @@ fn main() -> Result<(), anyhow::Error> {
     if let Some(l) = &config.location {
         init_location(l.latitude, l.longitude);
     }
+
+    let definition_config: DefinitionConfig = if let Some(p) = &config.definition_path {
+        let f = File::open(p).with_context(|| format!("Unable to load {}", p.to_string_lossy()))?;
+        serde_yaml::from_reader(f)?
+    } else {
+        serde_yaml::from_str(include_str!("definitions/definitions.yaml"))?
+    };
+    let definitions = create_definitions(definition_config)?;
 
     let events = config.groups.iter().try_fold(
         Events::default(),
@@ -79,10 +91,16 @@ fn main() -> Result<(), anyhow::Error> {
         events,
         |events, file| -> Result<Events, anyhow::Error> {
             info!("Loading file {}", file.to_string_lossy());
-            let f = File::open(file)
-                .with_context(|| format!("Unable to load {}", file.to_string_lossy()))?;
-            let e: EventMap = serde_yaml::from_reader(f)?;
-            Ok(events.merge(e))
+            if file.extension().unwrap() == "feature" {
+                let (new_events, start_with) = create_events_from_definitions(file, &definitions)?;
+                config.start_with.extend(start_with);
+                Ok(events.merge(new_events))
+            } else {
+                let f = File::open(file)
+                    .with_context(|| format!("Unable to load {}", file.to_string_lossy()))?;
+                let e: EventMap = serde_yaml::from_reader(f)?;
+                Ok(events.merge(e))
+            }
         },
     )?;
     let events = events.merge(config.events);
@@ -104,7 +122,7 @@ fn main() -> Result<(), anyhow::Error> {
     let (timer_tx, timer_rx) = mpsc::channel();
     #[cfg(feature = "notify")]
     let (file_tx, file_rx) = mpsc::channel();
-    let database = database::init(config.restore.as_deref());
+    let mut database = database::init(config.restore.as_deref());
     #[cfg(feature = "tiny_http")]
     let mut http_queue_pool = HttpQueuePool::default();
     #[cfg(feature = "rumqttc")]
@@ -201,12 +219,30 @@ fn main() -> Result<(), anyhow::Error> {
         }
 
         handle_count += 1;
+
+        match database.get::<QueueState>(STATE_KEY) {
+            Some(saved_state) if !saved_state.is_empty() => {
+                let mut state = config.initial_state;
+                state.extend(saved_state);
+                if let Err(e) = database.insert(STATE_KEY, &state) {
+                    warn!("Unable to save state {e}");
+                }
+            }
+            Some(_) => (),
+            None => {
+                if let Err(e) = database.insert(STATE_KEY, &config.initial_state) {
+                    warn!("Unable to save state {e}");
+                }
+            }
+        }
+        let queue_db = database.clone();
         let _queue_handle = s.spawn(|| {
             event_executor(
                 &events,
                 queue_rx,
                 queue_tx.clone(),
                 timer_tx,
+                queue_db,
                 #[cfg(feature = "notify")]
                 watcher,
                 #[cfg(feature = "rumqttc")]
@@ -229,7 +265,10 @@ fn main() -> Result<(), anyhow::Error> {
                 .map(|t| t.expired(now()))
             {
                 debug!("Restore event {}", ref_event.event_id());
-                time_events.insert(ref_event.event_id(), timer_event.expect("time event"));
+                time_events.insert(
+                    ref_event.event_id().to_string(),
+                    timer_event.expect("time event"),
+                );
             }
         }
         for name in config.start_with.iter() {
@@ -290,7 +329,10 @@ fn validate_events(
             .iter()
             .find(|e| matches!(e.event_type, EventType::ApiListen(_)))
         {
-            bail!("Please provide http configuration e.g. http: default: 127.0.0.1:8222 in order to use api_listen events. api_listen is provided in {}", e.name);
+            bail!(
+                "Please provide http configuration e.g. http: default: 127.0.0.1:8222 in order to use api_listen events. api_listen is provided in {}",
+                e.name
+            );
         }
     }
 
@@ -301,7 +343,10 @@ fn validate_events(
             .iter()
             .find(|e| matches!(e.event_type, EventType::ScanCodeRead(_)))
         {
-            bail!("Please provide device configuration e.g. devices: default: /dev/input/event0 in order to use scan code read events. scan_code_read is provided in {}", e.name);
+            bail!(
+                "Please provide device configuration e.g. devices: default: /dev/input/event0 in order to use scan code read events. scan_code_read is provided in {}",
+                e.name
+            );
         }
     }
 

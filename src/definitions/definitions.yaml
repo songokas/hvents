@@ -1,0 +1,163 @@
+capture_group_sizes:
+  string: 2
+
+events:
+  comparison:
+    fields:
+      data_type: data_type
+      key: string
+      operation: operation
+      value: string
+    arguments:
+      data_type: data|metadata|state
+      operation: is equal to|is not equal to|is greater than|is lower than|is above|is below
+    expressions:
+      - "{data_type} (key ){key} {operation} {value}"
+
+  once:
+    fields:
+      execute_time: string
+    expressions:
+      - once {execute_time}
+
+  repeat:
+    fields:
+      execute_time: string
+      event_id: string
+    expressions:
+      - periodically/every/repeat {execute_time}
+      - periodically/every/repeat {execute_time} with event id {event_id}
+
+  state_modifications:
+    arguments:
+      data_type: state
+    fields:
+      data_type: data_type
+      key: string
+      value: string
+    expressions:
+      - replace {data_type} key {key} with value {value}
+      - replace {data_type} {key} with {value}
+
+  mqtt_publish:
+    fields:
+      topic: string
+      body: string
+    expressions:
+      - mqtt publish (to topic ){topic} with body {body}
+      - mqtt publish {body} to {topic}
+
+  mqtt_subscribe:
+    arguments:
+      body_type: contains|contains any|matches|matches any
+    fields:
+      topic: string
+      body: string
+      body_type: body_type
+      pool_id: string
+    expressions:
+      - mqtt message from topic {topic} and body {body_type} {body}
+      - mqtt message from topic {topic}
+      - mqtt message from topic {topic} with {body} using {pool_id}
+      - mqtt message from topic {topic} with {body}
+      - mqtt message from topic {topic} using {pool_id}
+  mqtt_unsubscribe:
+    fields:
+      topic: string
+      pool_id: string
+    expressions:
+      - mqtt unsubscribe {topic} using {pool_id}
+      - mqtt unsubscribe {topic}
+  print:
+    arguments:
+      output: "stderr|stdout"
+    fields:
+      output: output
+      template: string
+    expressions:
+      - print to {output} {template}
+
+  command:
+    fields:
+      command: string
+      args: string
+    expressions:
+      - execute {command}
+      - execute {command} with (args ){args}
+
+  api_call:
+    fields:
+      url: string
+      request_body: string
+      headers: string
+      method: word
+      request_type: word
+      response_type: word
+    expressions:
+      - http {method} {request_body} to {url} with headers {headers}
+      - http {method} {request_body} to {url} expect {response_type}
+      - http {method} {request_body} to {url}
+      - http {method} {url} with headers {headers}
+      - http {method} {url}
+      -
+      -
+
+  api_listen:
+    fields:
+      path: string
+      response_body: string
+      method: word
+      request_content: word
+      response_content: word
+    expressions:
+      - http {path} is called with {method} and {request_content} respond with {response_body}
+      - http {path} is called with {method} respond with {response_body}
+      - http {path} is called respond with {response_body}
+
+  file_read:
+    fields:
+      file_path: string
+      data_type: word
+    expressions:
+      - read file {file_path} as {data_type}
+      - read file {file_path}
+
+  file_write:
+    fields:
+      file_path: string
+      mode: word
+    expressions:
+      - write file {file_path} mode {mode}
+      - write file {file_path}
+
+  file_watch:
+    fields:
+      file_path: string
+      watch: watch
+      recursive: recursive
+    arguments:
+      watch: watch|unwatch
+      recursive: recursive
+    expressions:
+      - "{watch} file/directory {file_path} {recursive}"
+      - "{watch} file/directory {file_path}"
+
+  file_changed:
+    fields:
+      file_path: string
+      when: word
+    expressions:
+      - on file change {file_path} when {when}
+
+  scan_code:
+    fields:
+      scan_code: int
+    expressions:
+      - on scan code {scan_code}
+
+  period:
+    fields:
+      from: string
+      to: string
+    expressions:
+      - withing period {from} {to}

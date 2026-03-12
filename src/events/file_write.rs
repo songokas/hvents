@@ -1,6 +1,7 @@
 use std::{fs::File, io::Write, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
+use strum::EnumString;
 
 use super::Data;
 
@@ -32,8 +33,9 @@ impl FileWriteEvent {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, EnumString)]
 #[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
 pub enum FileWriteMode {
     Append,
     #[default]

@@ -1,10 +1,10 @@
 use std::{
     sync::mpsc::{Receiver, Sender},
-    thread::{scope, Builder},
+    thread::{Builder, scope},
 };
 
 use indexmap::IndexMap;
-use log::{debug, error, info, warn};
+use log::{debug, error, info, trace, warn};
 use metrics::counter;
 #[cfg(feature = "notify")]
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
@@ -22,13 +22,16 @@ use crate::pools::mqtt::MqttPool;
 #[cfg(feature = "handlebars")]
 use crate::renderer::TemplateData;
 use crate::{
-    config::now,
+    config::{QueueState, now},
+    database::KeyValueStore,
     events::{
+        EventType, Events, NextEvent, ReferencingEvent,
         data::{Data, Metadata},
         file_watch::WatchAction,
-        EventType, Events, NextEvent, ReferencingEvent,
     },
 };
+
+pub const STATE_KEY: &str = "queue_state";
 
 #[allow(clippy::too_many_arguments)]
 pub fn event_executor(
@@ -36,21 +39,29 @@ pub fn event_executor(
     queue_rx: Receiver<ReferencingEvent>,
     queue_tx: Sender<ReferencingEvent>,
     timer_tx: Sender<ReferencingEvent>,
+    mut database: impl KeyValueStore,
     #[cfg(feature = "notify")] mut file_watcher: Option<RecommendedWatcher>,
     #[cfg(feature = "rumqttc")] mqtt_pool: MqttPool,
     #[cfg(feature = "reqwest")] client_pool: ClientPool,
     #[cfg(feature = "tiny_http")] http_queue_pool: HttpQueuePool,
     #[cfg(feature = "handlebars")] handlebars: &handlebars::Handlebars,
 ) -> Result<(), anyhow::Error> {
-    let mut state: IndexMap<String, String> = IndexMap::new();
-    let send_next_event = |data: Data, metadata: Metadata, next_event_name: Option<String>| {
+    let mut state: QueueState = database.get(STATE_KEY).unwrap_or_default();
+    info!("Initial state {state:?}");
+    let send_next_event = |data: Data,
+                           metadata: Metadata,
+                           next_event_name: Option<String>,
+                           event_id_suffix: Option<String>| {
         let Some(ref_event) = next_event_name else {
             return;
         };
         if let Some(mut event_to_execute) = events.get_event_by_name(&ref_event) {
             event_to_execute.merge(data);
             event_to_execute.metadata.merge(metadata);
-            debug!("Queue next event={}", event_to_execute.name);
+            if let Some(event_id) = event_id_suffix {
+                event_to_execute.overwrite_event_id(format!("{ref_event}_{event_id}"));
+            }
+            debug!("Queue next event={}", event_to_execute.event_id());
             queue_tx.send(event_to_execute).expect("event queue");
         }
     };
@@ -59,6 +70,8 @@ pub fn event_executor(
             counter!("hvents.queue.received_events", "event_type" => received.event_type.to_string())
                 .increment(1);
 
+            trace!("Received new event={received:?}");
+
             if let Some(key) = received.state.as_ref().and_then(|s| s.count.as_deref()) {
                 state
                     .entry(key.to_string())
@@ -66,7 +79,47 @@ pub fn event_executor(
                     .or_insert_with(|| 0.to_string());
             }
             if let Some(map) = received.state.as_ref().map(|s| &s.replace) {
-                state.extend(map.clone());
+                let mut new_state: IndexMap<String, String, _> = IndexMap::new();
+                #[cfg(feature = "handlebars")]
+                let template_data = TemplateData {
+                    data: &received.data,
+                    metadata: &received.metadata,
+                    state: &state,
+                };
+                for (k, v) in map {
+                    #[cfg(feature = "handlebars")]
+                    let k = match handlebars.render_template(k, &template_data) {
+                        Ok(s) => s.trim().to_string(),
+                        Err(e) => {
+                            error!("Failed to render for template for state key {k} {e}");
+                            continue;
+                        }
+                    };
+                    #[cfg(not(feature = "handlebars"))]
+                    let k = k.clone();
+                    if k.is_empty() {
+                        trace!("Ignoring empty state key for {}", received.event_id());
+                        continue;
+                    }
+                    #[cfg(feature = "handlebars")]
+                    let v = match handlebars.render_template(v, &template_data) {
+                        Ok(s) => s.trim().to_string(),
+                        Err(e) => {
+                            error!("Failed to render for template for state key {k} {e}");
+                            continue;
+                        }
+                    };
+                    #[cfg(not(feature = "handlebars"))]
+                    let v = v.clone();
+                    new_state.insert(k, v);
+                }
+                let state_changed = !new_state.is_empty();
+                state.extend(new_state);
+                if state_changed {
+                    if let Err(e) = database.insert(STATE_KEY, &state) {
+                        warn!("Unable to save state {e}");
+                    }
+                }
             }
 
             #[cfg(feature = "handlebars")]
@@ -80,7 +133,7 @@ pub fn event_executor(
                 Some(NextEvent::Template(s)) => {
                     #[cfg(feature = "handlebars")]
                     match handlebars.render_template(s, &template_data) {
-                        Ok(s) => Some(s),
+                        Ok(s) => Some(s.trim().to_string()),
                         Err(e) => {
                             error!("Failed to render event template {e}");
                             None
@@ -101,7 +154,7 @@ pub fn event_executor(
                 continue;
             }
 
-            debug!("Running event={}", received.event_id());
+            trace!("Running event={} state={state:?}", received.event_id());
 
             match received.event_type {
                 #[cfg(feature = "rumqttc")]
@@ -141,7 +194,7 @@ pub fn event_executor(
                     if let Some(c) = mqtt_pool.get(&e.pool_id) {
                         #[cfg(feature = "handlebars")]
                         let topic = match handlebars.render_template(&e.topic, &template_data) {
-                            Ok(t) if !t.trim().is_empty() => t,
+                            Ok(t) if !t.trim().is_empty() => t.trim().to_string(),
                             Ok(_) => {
                                 info!("Empty topic provided for event={}. Ignoring", received.name);
                                 continue;
@@ -198,7 +251,7 @@ pub fn event_executor(
                     if let Some(client) = client_pool.get(&e.pool_id) {
                         #[cfg(feature = "handlebars")]
                         match handlebars.render_template(&e.url, &template_data) {
-                            Ok(url) => e.url = url,
+                            Ok(url) => e.url = url.trim().to_string(),
                             Err(e) => {
                                 error!("Failed to render url template {e}");
                                 continue 'main;
@@ -207,7 +260,11 @@ pub fn event_executor(
                         #[cfg(feature = "handlebars")]
                         if let Some(body) = &e.request_body {
                             match handlebars.render_template(body, &template_data) {
-                                Ok(body) => received.data = Data::String(body),
+                                Ok(body) => {
+                                    use crate::events::MergePolicy;
+                                    received.data = Data::String(body.trim().to_string());
+                                    received.merge_data = MergePolicy::Overwrite;
+                                }
                                 Err(e) => {
                                     error!("Failed to render request_body template {e}");
                                     continue 'main;
@@ -230,6 +287,7 @@ pub fn event_executor(
                                             received.data,
                                             received.metadata,
                                             next_event_name,
+                                            None,
                                         );
                                     }
                                     Err(e) => {
@@ -310,7 +368,6 @@ pub fn event_executor(
                         debug!("File write path={}", f.file.to_string_lossy());
                     }
                 }
-                // these events are handled in a file change executor
                 #[cfg(feature = "notify")]
                 EventType::FileChanged(_) => continue,
                 #[cfg(feature = "notify")]
@@ -356,7 +413,9 @@ pub fn event_executor(
                     #[cfg(feature = "handlebars")]
                     for (index, template) in &c.replace_args {
                         match handlebars.render_template(template, &template_data) {
-                            Ok(a) if args.get(*index).is_some() => args[*index] = a,
+                            Ok(a) if args.get(*index).is_some() => {
+                                args[*index] = a.trim().to_string()
+                            }
                             Ok(_) => {
                                 warn!("Failed to replace argument at index {index} {template}");
                                 continue 'main;
@@ -379,7 +438,12 @@ pub fn event_executor(
                                 debug!("Command name={} finished with data {d:?}", c.command);
                                 received.data.merge_with_policy(d, received.merge_data);
                                 received.metadata.merge(m);
-                                send_next_event(received.data, received.metadata, next_event_name);
+                                send_next_event(
+                                    received.data,
+                                    received.metadata,
+                                    next_event_name,
+                                    None,
+                                );
                             }
                             Err(e) => error!("Failed to execute command {} {e}", c.command),
                         });
@@ -388,14 +452,36 @@ pub fn event_executor(
                     }
                     continue;
                 }
-                EventType::Print(e) => e.run(&received.data),
+                EventType::Print(e) => {
+                    match handlebars.render_template(&e.template, &template_data) {
+                        Ok(s) => e.run(s.trim()),
+                        Err(e) => error!("Failed to render print template {e}"),
+                    }
+                }
                 EventType::Forward => (),
-                // events begin in evdev executor
                 #[cfg(all(unix, feature = "evdev"))]
                 EventType::ScanCodeRead(_) => continue,
+                EventType::ForwardData(forward_data) => {
+                    for (i, data) in forward_data.into_iter().enumerate() {
+                        send_next_event(
+                            data,
+                            Metadata::default(),
+                            next_event_name.clone(),
+                            format!("{i}").into(),
+                        );
+                    }
+                    continue;
+                }
+                EventType::Comparison(c) => {
+                    if c.matches(&template_data) {
+                        trace!("Comparison matched {c:?}");
+                    } else {
+                        continue;
+                    }
+                }
             }
 
-            send_next_event(received.data, received.metadata, next_event_name);
+            send_next_event(received.data, received.metadata, next_event_name, None);
         }
     });
 
@@ -408,14 +494,17 @@ mod tests {
     use std::{sync::mpsc::channel, thread::spawn};
 
     use handlebars::Handlebars;
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
 
-    use crate::events::{
-        data::Data,
-        mqtt_publish::MqttPublishEvent,
-        period::{ExecutionPeriod, PeriodEvent},
-        time::TimeEvent,
-        StateData,
+    use crate::{
+        database::Store,
+        events::{
+            StateData,
+            data::Data,
+            mqtt_publish::MqttPublishEvent,
+            period::{ExecutionPeriod, PeriodEvent},
+            time::TimeEvent,
+        },
     };
 
     use super::*;
@@ -477,6 +566,7 @@ mod tests {
                 queue_rx,
                 queue_tx.clone(),
                 timer_tx,
+                Store::in_memory(),
                 None,
                 MqttPool::default(),
                 ClientPool::default(),
@@ -556,6 +646,7 @@ mod tests {
                 queue_rx,
                 queue_tx.clone(),
                 timer_tx,
+                Store::in_memory(),
                 None,
                 MqttPool::default(),
                 ClientPool::default(),

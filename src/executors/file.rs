@@ -6,11 +6,11 @@ use std::{
 use log::{debug, error, warn};
 use metrics::counter;
 use notify::{
-    event::{AccessKind, AccessMode, CreateKind, RemoveKind},
     Event, EventKind,
+    event::{AccessKind, AccessMode, CreateKind, RemoveKind},
 };
 
-use crate::events::{file_changed::WatchKind, EventType, Events, ReferencingEvent};
+use crate::events::{EventType, Events, ReferencingEvent, file_changed::WatchKind};
 
 pub fn file_changed_executor(
     events: &Events,
@@ -80,7 +80,7 @@ fn handle_incoming(
 #[cfg(test)]
 mod tests {
     use std::{
-        fs::{create_dir, remove_file, File},
+        fs::{File, create_dir, remove_file},
         io::Write,
         sync::mpsc::channel,
         thread::{sleep, spawn},
@@ -88,9 +88,9 @@ mod tests {
     };
 
     use notify::{RecommendedWatcher, RecursiveMode, Watcher};
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
 
-    use crate::events::{data::Data, file_changed::FileChangedEvent, time::TimeEvent, NextEvent};
+    use crate::events::{NextEvent, data::Data, file_changed::FileChangedEvent, time::TimeEvent};
 
     use super::*;
 

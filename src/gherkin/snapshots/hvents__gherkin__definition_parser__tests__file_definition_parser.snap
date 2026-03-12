@@ -1,0 +1,149 @@
+---
+source: src/gherkin/definition_parser.rs
+expression: events
+snapshot_kind: text
+---
+- "Listen for changes execute \"mkdir\" with args \"-p /tmp/_file_changes\"":
+    name: "Listen for changes execute \"mkdir\" with args \"-p /tmp/_file_changes\""
+    execute:
+      command: mkdir
+      args:
+        - "-p"
+        - /tmp/_file_changes
+      replace_args: {}
+      vars: {}
+      data_type: string
+    next_event: "Listen for changes watch directory \"/tmp/_file_changes\" recursive"
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Listen for changes watch directory \"/tmp/_file_changes\" recursive":
+    name: "Listen for changes watch directory \"/tmp/_file_changes\" recursive"
+    watch:
+      path: /tmp/_file_changes
+      action: start
+      recursive: false
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "File created on file change \"/tmp/_file_changes/a\" when created":
+    name: "File created on file change \"/tmp/_file_changes/a\" when created"
+    file_changed:
+      path: /tmp/_file_changes/a
+      when: created
+    next_event: "File created print to stdout \"File created\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "File created print to stdout \"File created\"":
+    name: "File created print to stdout \"File created\""
+    print:
+      template: File created
+      output: stdout
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "File changed on file change \"/tmp/_file_changes/a\" when written":
+    name: "File changed on file change \"/tmp/_file_changes/a\" when written"
+    file_changed:
+      path: /tmp/_file_changes/a
+      when: written
+    next_event: "File changed print to stdout \"File changed\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "File changed print to stdout \"File changed\"":
+    name: "File changed print to stdout \"File changed\""
+    print:
+      template: File changed
+      output: stdout
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "File removed on file change \"/tmp/_file_changes/a\" when removed":
+    name: "File removed on file change \"/tmp/_file_changes/a\" when removed"
+    file_changed:
+      path: /tmp/_file_changes/a
+      when: removed
+    next_event: "File removed print to stdout \"File removed\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "File removed print to stdout \"File removed\"":
+    name: "File removed print to stdout \"File removed\""
+    print:
+      template: File removed
+      output: stdout
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Write changes every \"in 10 seconds\"":
+    name: "Write changes every \"in 10 seconds\""
+    repeat:
+      execute_time: hidden
+      event_id: ~
+    next_event: "Write changes execute \"ls\" with args \"/tmp/\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Write changes execute \"ls\" with args \"/tmp/\"":
+    name: "Write changes execute \"ls\" with args \"/tmp/\""
+    execute:
+      command: ls
+      args:
+        - /tmp/
+      replace_args: {}
+      vars: {}
+      data_type: string
+    next_event: "Write changes write file \"/tmp/_file_changes/a\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Write changes write file \"/tmp/_file_changes/a\"":
+    name: "Write changes write file \"/tmp/_file_changes/a\""
+    file_write:
+      file: /tmp/_file_changes/a
+      mode: truncate
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Remove file every 15 seconds every \"in 15 seconds\"":
+    name: "Remove file every 15 seconds every \"in 15 seconds\""
+    repeat:
+      execute_time: hidden
+      event_id: ~
+    next_event: "Remove file every 15 seconds execute \"rm\" with args \"/tmp/_file_changes/a\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Remove file every 15 seconds execute \"rm\" with args \"/tmp/_file_changes/a\"":
+    name: "Remove file every 15 seconds execute \"rm\" with args \"/tmp/_file_changes/a\""
+    execute:
+      command: rm
+      args:
+        - /tmp/_file_changes/a
+      replace_args: {}
+      vars: {}
+      data_type: string
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+- - "Listen for changes execute \"mkdir\" with args \"-p /tmp/_file_changes\""
+  - "File created on file change \"/tmp/_file_changes/a\" when created"
+  - "File changed on file change \"/tmp/_file_changes/a\" when written"
+  - "File removed on file change \"/tmp/_file_changes/a\" when removed"
+  - "Write changes every \"in 10 seconds\""
+  - "Remove file every 15 seconds every \"in 15 seconds\""

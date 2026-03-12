@@ -1,4 +1,4 @@
-  # yaml-language-server: $schema=../scheme.events.json
+  # yaml-language-server: $schema=../hvents.schema.events.json
 
   movement:
     mqtt_subscribe:

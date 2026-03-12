@@ -17,22 +17,22 @@ Supports:
 amd64
 
 ```
-wget https://github.com/songokas/hvents/releases/download/v0.5.0/hvents_0.5.0_amd64.deb \
-  && sudo apt install ./hvents_0.5.0_amd64.deb
+wget https://github.com/songokas/hvents/releases/download/v0.5.1/hvents_0.5.1_amd64.deb \
+  && sudo apt install ./hvents_0.5.1_amd64.deb
 ```
 
 armhf
 
 ```
-wget https://github.com/songokas/hvents/releases/download/v0.5.0/hvents_0.5.0_armhf.deb \
-  && sudo apt install ./hvents_0.5.0_armhf.deb
+wget https://github.com/songokas/hvents/releases/download/v0.5.1/hvents_0.5.1_armhf.deb \
+  && sudo apt install ./hvents_0.5.1_armhf.deb
 ```
 
 arm64
 
 ```
-wget https://github.com/songokas/hvents/releases/download/v0.5.0/hvents_0.5.0_arm64.deb \
-  && sudo apt install ./hvents_0.5.0_arm64.deb
+wget https://github.com/songokas/hvents/releases/download/v0.5.1/hvents_0.5.1_arm64.deb \
+  && sudo apt install ./hvents_0.5.1_arm64.deb
 ```
 
 ## Download binary
@@ -383,6 +383,18 @@ scan_code_read: 0x7a1a
 ```
 
 devices needs to be defined globally
+
+### Apply comparison
+
+Apply comparison operation and if it matches execute next event
+
+```yaml
+comparison:
+   data_to_compare: state
+   key: test
+   operation": lt
+   value: 15
+```
 
 ## Template data
 

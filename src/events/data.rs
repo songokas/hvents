@@ -1,8 +1,9 @@
 use core::str::from_utf8;
 use std::{borrow::Cow, io::Read};
 
-use serde::{de, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de};
 use serde_json::Value;
+use strum::EnumString;
 
 use super::MergePolicy;
 
@@ -55,7 +56,7 @@ impl Data {
         })
     }
 
-    pub fn as_bytes(&self) -> anyhow::Result<Cow<[u8]>> {
+    pub fn as_bytes(&self) -> anyhow::Result<Cow<'_, [u8]>> {
         Ok(match self {
             Data::Json(j) => serde_json::to_vec(j)?.into(),
             Data::String(s) => s.as_bytes().into(),
@@ -107,6 +108,16 @@ impl Data {
         };
         self.merge(data);
     }
+
+    pub(crate) fn get(&self, key: &str) -> Option<&str> {
+        match self {
+            Data::String(s) if key.is_empty() => Some(s.as_str()),
+            Data::String(_) => None,
+            Data::Json(value) => value.get(key).and_then(|v| v.as_str()),
+            Data::Bytes(_) => None,
+            Data::Empty => None,
+        }
+    }
 }
 
 impl PartialEq<Value> for Data {
@@ -118,8 +129,9 @@ impl PartialEq<Value> for Data {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default, Copy)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, Copy, EnumString)]
 #[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
 pub enum DataType {
     #[default]
     String,
@@ -133,6 +145,10 @@ pub struct Metadata(Value);
 impl Metadata {
     pub fn merge(&mut self, metadata: Metadata) {
         merge_json_value_recursive(&mut self.0, metadata.0)
+    }
+
+    pub(crate) fn get(&self, key: &str) -> Option<&str> {
+        self.0.get(key).and_then(|v| v.as_str())
     }
 }
 

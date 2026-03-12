@@ -3,6 +3,7 @@ pub mod api_call;
 #[cfg(feature = "tiny_http")]
 pub mod api_listen;
 pub mod command;
+pub mod comparison;
 pub mod data;
 pub mod file_changed;
 pub mod file_read;
@@ -25,9 +26,9 @@ use indexmap::{IndexMap, IndexSet};
 use mqtt_unsubscribe::MqttUnsubscribeEvent;
 use period::PeriodEvent;
 use print::PrintEvent;
-use serde::{de, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de};
 use std::{borrow::Borrow, hash::Hash, path::PathBuf};
-use time::{str_to_time, ExecuteTime, TimeEvent};
+use time::{ExecuteTime, TimeEvent, str_to_time};
 
 #[cfg(feature = "tiny_http")]
 use api_listen::ApiListenEvent;
@@ -44,6 +45,8 @@ use mqtt_subscribe::MqttSubscribeEvent;
 
 #[cfg(feature = "reqwest")]
 use api_call::ApiCallEvent;
+
+use crate::events::{comparison::ComparisonEvent, print::Output};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -79,10 +82,13 @@ pub enum EventType {
     #[serde(deserialize_with = "deserialize_file_changed_event")]
     FileChanged(FileChangedEvent),
     Execute(CommandEvent),
+    #[serde(deserialize_with = "deserialize_print_event")]
     Print(PrintEvent),
+    ForwardData(Vec<Data>),
     Forward,
     #[cfg(all(unix, feature = "evdev"))]
     ScanCodeRead(scan_code_read::ScanCodeReadEvent),
+    Comparison(ComparisonEvent),
 }
 
 impl Display for EventType {
@@ -110,8 +116,10 @@ impl Display for EventType {
             EventType::Execute(_) => write!(f, "execute"),
             EventType::Print(_) => write!(f, "print"),
             EventType::Forward => write!(f, "pass"),
+            EventType::ForwardData(_) => write!(f, "forward data"),
             #[cfg(all(unix, feature = "evdev"))]
             EventType::ScanCodeRead(_) => write!(f, "scan_code_read"),
+            EventType::Comparison(_) => write!(f, "comparison"),
         }
     }
 }
@@ -134,7 +142,7 @@ pub struct ReferencingEvent {
     pub merge_data: MergePolicy,
 }
 
-#[cfg(test)]
+// #[cfg(test)]
 impl Default for ReferencingEvent {
     fn default() -> Self {
         Self {
@@ -223,6 +231,12 @@ impl ReferencingEvent {
             Some(t)
         } else {
             None
+        }
+    }
+
+    pub fn overwrite_event_id(&mut self, event_id: String) {
+        if let EventType::Time(t) | EventType::Repeat(t) = &mut self.event_type {
+            t.event_id = event_id.into();
         }
     }
 
@@ -382,6 +396,26 @@ where
         OneOrFull::One(file) => Ok(FileWriteEvent {
             file,
             mode: Default::default(),
+        }),
+        OneOrFull::Full(t) => Ok(t),
+    }
+}
+
+fn deserialize_print_event<'de, D>(deserializer: D) -> Result<PrintEvent, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    #[derive(Debug, Deserialize)]
+    #[serde(untagged)]
+    enum OneOrFull {
+        One(Output),
+        Full(PrintEvent),
+    }
+    let s: OneOrFull = de::Deserialize::deserialize(deserializer)?;
+    match s {
+        OneOrFull::One(output) => Ok(PrintEvent {
+            output,
+            template: "{{data}}".to_string(),
         }),
         OneOrFull::Full(t) => Ok(t),
     }

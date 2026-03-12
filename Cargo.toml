@@ -1,7 +1,7 @@
 [package]
 name = "hvents"
-version = "0.5.0"
-edition = "2021"
+version = "0.5.1"
+edition = "2024"
 
 authors = ["Tomas Jakstas <tom.jakstas@gmail.com>"]
 description = "Configuration based home automation"
@@ -31,13 +31,18 @@ serde_yaml = "0.9"
 anyhow = "1"
 sunrise = "1"
 indexmap = { version = "2", features = ["serde"] }
-notify = { version = "6.1.1", default-features = false, features = [
+notify = { version = "6", default-features = false, features = [
     "macos_kqueue",
 ], optional = true }
 tiny_http = { version = "0.12", optional = true }
 metrics = "0.24"
 otlp-metrics-exporter = { version = "0.1", optional = true }
-rust-fuzzy-search = "0.1.1"
+rust-fuzzy-search = "0.1"
+
+cucumber-expressions = { version = "0.5", features = ["into-regex"] }
+gherkin = "0.15"
+regex = "1.12"
+strum = { version = "0.27", features = ["derive"] }
 
 [target.'cfg(unix)'.dependencies]
 evdev = { version = "0.12", default-features = false, features = [
@@ -45,6 +50,8 @@ evdev = { version = "0.12", default-features = false, features = [
 ], optional = true }
 hex = { version = "0.4" }
 
+[dev-dependencies]
+insta = { version = "1", features = ["yaml"] }
 
 [features]
 

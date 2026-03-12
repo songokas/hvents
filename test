@@ -67,6 +67,7 @@ EOF
     local pids=()
 
     $BIN <(echo -n "$config") & pids+=($!)
+    sleep 1
 
     curl 127.0.0.1:12333
     sleep 10

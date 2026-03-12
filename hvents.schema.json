@@ -1,6 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://example.com/hvents.schema.json",
+    "$id": "./hvents.schema.json",
     "title": "Home event configuration",
     "description": "Root home event configuration",
     "type": "object",
@@ -35,7 +35,7 @@
             "uniqueItems": true
         },
         "events": {
-            "$ref": "scheme.events.json"
+            "$ref": "hvents.schema.events.json"
         },
         "http": {
             "description": "Http listener configuration",
@@ -121,9 +121,16 @@
             },
             "minItems": 1,
             "uniqueItems": true
+        },
+        "initial_state": {
+            "description": "Initial state configuration",
+            "type": "object",
+            "patternProperties": {
+                ".+": {
+                    "type": "string"
+                }
+            },
+            "uniqueItems": true
         }
-    },
-    "required": [
-        "start_with"
-    ]
+    }
 }

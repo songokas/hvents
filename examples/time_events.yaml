@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../scheme.json
+# yaml-language-server: $schema=../hvents.schema.json
 
 events:
   5_seconds:

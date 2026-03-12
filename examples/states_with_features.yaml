@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=../hvents.schema.json
+
+event_files:
+  - examples/state.feature
+  - examples/api.feature
+  - examples/file.feature
+
+initial_state:
+  bathroom_internal_state: off
+
+mqtt:
+  default:
+    host: localhost
+http:
+  default: 127.0.0.1:23323

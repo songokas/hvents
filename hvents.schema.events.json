@@ -1,6 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://example.com/hvents.events.schema.json",
+    "$id": "./hvents.schema.events.json",
     "title": "Home event configuration",
     "description": "Specific event configuration",
     "type": "object",
@@ -265,9 +265,25 @@
                 },
                 "forward": {},
                 "print": {
-                    "enum": [
-                        "stderr",
-                        "stdout"
+                    "type": [
+                        "object",
+                        "string"
+                    ],
+                    "properties": {
+                        "output": {
+                            "enum": [
+                                "stderr",
+                                "stdout"
+                            ]
+                        },
+                        "template": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "forward_data": {
+                    "type": [
+                        "array"
                     ]
                 },
                 "next_event": {

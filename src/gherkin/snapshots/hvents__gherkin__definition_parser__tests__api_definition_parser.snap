@@ -1,0 +1,129 @@
+---
+source: src/gherkin/definition_parser.rs
+expression: events
+snapshot_kind: text
+---
+- "Listen for an api call http \"/status\" is called respond with \"OK\"":
+    name: "Listen for an api call http \"/status\" is called respond with \"OK\""
+    api_listen:
+      path: /status
+      method: get
+      request_content: bytes
+      request_headers: []
+      response_headers: {}
+      response_body: OK
+      response_content: text
+      action: start
+      pool_id: ""
+    next_event: "Listen for an api call print to stdout \"Status called\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Listen for an api call print to stdout \"Status called\"":
+    name: "Listen for an api call print to stdout \"Status called\""
+    print:
+      template: Status called
+      output: stdout
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Listen for an api call http \"/api\" is called with post and text respond with \"Hey\"":
+    name: "Listen for an api call http \"/api\" is called with post and text respond with \"Hey\""
+    api_listen:
+      path: /api
+      method: post
+      request_content: text
+      request_headers: []
+      response_headers: {}
+      response_body: Hey
+      response_content: text
+      action: start
+      pool_id: ""
+    next_event: "Listen for an api call print to stdout \"Data received {{data}}\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Listen for an api call print to stdout \"Data received {{data}}\"":
+    name: "Listen for an api call print to stdout \"Data received {{data}}\""
+    print:
+      template: "Data received {{data}}"
+      output: stdout
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Fetch status every \"in 10 seconds\"":
+    name: "Fetch status every \"in 10 seconds\""
+    repeat:
+      execute_time: hidden
+      event_id: ~
+    next_event: "Fetch status http get \"http://127.0.0.1:23323/status\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Fetch status http get \"http://127.0.0.1:23323/status\"":
+    name: "Fetch status http get \"http://127.0.0.1:23323/status\""
+    api_call:
+      url: "http://127.0.0.1:23323/status"
+      headers: {}
+      method: get
+      request_body: ~
+      request_content: bytes
+      response_content: text
+      pool_id: ""
+    next_event: "Fetch status print to stdout \"Response received from status {{data}}\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Fetch status print to stdout \"Response received from status {{data}}\"":
+    name: "Fetch status print to stdout \"Response received from status {{data}}\""
+    print:
+      template: "Response received from status {{data}}"
+      output: stdout
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Send request every \"in 12 seconds\"":
+    name: "Send request every \"in 12 seconds\""
+    repeat:
+      execute_time: hidden
+      event_id: ~
+    next_event: "Send request http post \"Hello\" to \"http://127.0.0.1:23323/api\" expect text"
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Send request http post \"Hello\" to \"http://127.0.0.1:23323/api\" expect text":
+    name: "Send request http post \"Hello\" to \"http://127.0.0.1:23323/api\" expect text"
+    api_call:
+      url: "http://127.0.0.1:23323/api"
+      headers: {}
+      method: post
+      request_body: Hello
+      request_content: bytes
+      response_content: text
+      pool_id: ""
+    next_event: "Send request print to stdout \"Response received from api {{data}}\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Send request print to stdout \"Response received from api {{data}}\"":
+    name: "Send request print to stdout \"Response received from api {{data}}\""
+    print:
+      template: "Response received from api {{data}}"
+      output: stdout
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+- - "Listen for an api call http \"/status\" is called respond with \"OK\""
+  - "Listen for an api call http \"/api\" is called with post and text respond with \"Hey\""
+  - "Fetch status every \"in 10 seconds\""
+  - "Send request every \"in 12 seconds\""

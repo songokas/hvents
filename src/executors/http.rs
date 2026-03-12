@@ -5,12 +5,12 @@ use indexmap::IndexSet;
 use log::{debug, error, warn};
 use metrics::counter;
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tiny_http::{Header, Method, Request, Response, Server};
 
 use crate::{
     config::Headers,
-    events::{api_listen::HttpQueue, data::Data, EventType, Events, ReferencingEvent},
+    events::{EventType, Events, ReferencingEvent, api_listen::HttpQueue, data::Data},
     request_reponse::{RequestContent, ResponseContent},
 };
 
@@ -185,7 +185,9 @@ fn handle_incoming(
         }
         event.merge(ref_event.data.clone());
         let mut metadata = ref_event.metadata.clone();
-        metadata.merge(json!({ref_event.name.as_str(): {"url": request.url(), "segments": segments, "remote_address": request.remote_addr()}}).into());
+        let mut meta = json!({"url": request.url(), "segments": segments, "remote_address": request.remote_addr()});
+        meta[ref_event.name.as_str()] = meta.clone();
+        metadata.merge(meta.into());
         event.metadata.merge(metadata);
 
         ResponseData {
@@ -213,6 +215,7 @@ struct TemplateData<'a> {
     data: &'a Data,
 }
 
+#[derive(Debug)]
 struct ResponseData {
     event: Option<ReferencingEvent>,
     data: Vec<u8>,
@@ -228,9 +231,9 @@ mod tests {
 
     use crate::{
         events::{
+            NextEvent,
             api_listen::{ApiListenEvent, HttpQueue},
             time::TimeEvent,
-            NextEvent,
         },
         request_reponse::RequestMethod,
     };

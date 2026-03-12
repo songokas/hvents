@@ -1,7 +1,7 @@
 use handlebars::{
     Context, Handlebars, Helper, HelperResult, JsonRender, Output, RenderContext, RenderErrorReason,
 };
-use human_date_parser::{from_human_time, ParseResult};
+use human_date_parser::{ParseResult, from_human_time};
 use indexmap::IndexMap;
 use serde::Serialize;
 use std::fmt::Write;
@@ -15,6 +15,7 @@ pub fn load_handlebars() -> Handlebars<'static> {
     let mut handlebars = Handlebars::new();
     handlebars.register_helper("date-time-format", Box::new(date_time_helper));
     handlebars.register_helper("lookup-word", Box::new(lookup_word));
+    handlebars.register_helper("concat", Box::new(concat));
     handlebars
 }
 
@@ -127,9 +128,33 @@ fn lookup_word(
     Ok(())
 }
 
+fn concat(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
+    let data = h
+        .param(0)
+        .ok_or(RenderErrorReason::ParamNotFoundForIndex("concat", 0))?
+        .value()
+        .render();
+
+    let str = h
+        .param(1)
+        .ok_or(RenderErrorReason::ParamNotFoundForIndex("concat", 1))?
+        .value()
+        .render();
+    let mut word = String::new();
+    write!(word, "{data}{str}").map_err(|e| RenderErrorReason::Other(e.to_string()))?;
+    out.write(&word)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
 
     use crate::config::now;
 
@@ -205,5 +230,60 @@ mod tests {
         let template = r#"{{lookup-word this 2 "a"}}"#;
         let result = handlebars.render_template(template, &data).unwrap();
         assert_eq!(result, "");
+    }
+
+    #[test]
+    fn test_lookup() {
+        let handlebars = load_handlebars();
+        let data = json!({
+                "data": "room",
+                "state": json!({
+                    "room": "20"
+                })
+        });
+
+        let template = r#"{{lookup state data}}"#;
+        let result = handlebars.render_template(template, &data).unwrap();
+        assert_eq!(result, "20");
+
+        let template = r#"
+        {{#if (lt (lookup state data) 21)}}
+            ok
+        {{/if}}"#;
+        let result = handlebars.render_template(template, &data).unwrap();
+        assert_eq!(result, "\n            ok\n");
+
+        let data = json!({
+                "data": "room",
+                "state": json!({
+                    "room": "something else"
+                })
+        });
+
+        let template = r#"{{#if (eq "hello" 21)}}ok{{/if}}"#;
+        let result = handlebars.render_template(template, &data).unwrap();
+        assert_eq!(result, "");
+
+        let template = r#"{{#if (not (lookup state 'none'))}}yes{{/if}}"#;
+        let result = handlebars.render_template(template, &data).unwrap();
+        assert_eq!(result, "yes");
+    }
+
+    #[test]
+    fn test_concat() {
+        let handlebars = load_handlebars();
+        let data = "some data";
+
+        let template = r#"{{concat 'hello' 'mark'}}"#;
+        let result = handlebars.render_template(template, &data).unwrap();
+        assert_eq!(result, "hellomark");
+
+        let template = r#"{{concat this 'mark'}}"#;
+        let result = handlebars.render_template(template, &data).unwrap();
+        assert_eq!(result, "some datamark");
+
+        let template = r#"{{concat nothing 'mark'}}"#;
+        let result = handlebars.render_template(template, &data).unwrap();
+        assert_eq!(result, "mark");
     }
 }

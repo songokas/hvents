@@ -1,9 +1,10 @@
-use core::{fmt::Display, str::FromStr};
+use core::str::FromStr;
+use std::fmt::Display;
 use std::time::Duration;
 
 use chrono::{DateTime, Days, Local, NaiveDateTime, NaiveTime};
-use human_date_parser::{from_human_time, ParseError, ParseResult};
-use serde::{de, Deserialize, Serialize};
+use human_date_parser::{ParseError, ParseResult, from_human_time};
+use serde::{Deserialize, Serialize, de};
 
 use crate::config::{location, now};
 use crate::sun_time::sunrise;
@@ -15,6 +16,8 @@ pub const EXECUTION_PERIOD: Duration = Duration::from_millis(1000);
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TimeEvent {
     #[serde(deserialize_with = "str_to_time")]
+    // hide time related string for insta
+    #[cfg_attr(test, serde(serialize_with = "time_to_empty"))]
     pub execute_time: ExecuteTime,
 
     /// same event id can be used to overwrite a previous time event
@@ -227,6 +230,18 @@ where
     match s {
         StringOrTime::String(s) => s.parse().map_err(de::Error::custom),
         StringOrTime::Time(t) => Ok(t),
+    }
+}
+
+#[cfg(test)]
+pub fn time_to_empty<S>(e: &ExecuteTime, s: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    if crate::config::INSTA_OUTPUT.get() {
+        s.serialize_str("hidden")
+    } else {
+        e.serialize(s)
     }
 }
 

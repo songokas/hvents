@@ -69,7 +69,7 @@ fn handle_incoming(events: &Events, topic: &str, payload: &[u8]) -> Option<Refer
         event.merge(event_associated.data.clone());
         event.try_merge_bytes(payload);
         let mut metadata = event_associated.metadata.clone();
-        metadata.merge(json!({ event_associated.name.as_str(): {"topic": topic, "segments": topic.split('/').collect::<Vec<&str>>() }}).into());
+        metadata.merge(json!({"topic": topic, "topic_segments": topic.split('/').collect::<Vec<&str>>(), event_associated.name.as_str(): {"topic": topic, "segments": topic.split('/').collect::<Vec<&str>>() }}).into());
         event.metadata.merge(metadata);
         Some(event)
     } else {
@@ -85,8 +85,8 @@ fn handle_incoming(events: &Events, topic: &str, payload: &[u8]) -> Option<Refer
 mod tests {
 
     use crate::events::{
-        mqtt_subscribe::{MqttBodyMatch, MqttSubscribeEvent},
         EventName, NextEvent,
+        mqtt_subscribe::{MqttBodyMatch, MqttSubscribeEvent},
     };
 
     use super::*;

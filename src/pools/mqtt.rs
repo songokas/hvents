@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use log::info;
 use rumqttc::{Client, Connection, MqttOptions};
 
-use crate::config::{now, MqttConfiguration, PoolId};
+use crate::config::{MqttConfiguration, PoolId, now};
 
 #[derive(Default)]
 pub struct MqttPool {

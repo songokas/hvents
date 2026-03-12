@@ -9,9 +9,11 @@ use crate::events::{EventMap, EventName};
 pub type ClientId = String;
 pub type PoolId = String;
 pub type Headers = HashMap<String, String>;
+pub type QueueState = IndexMap<String, String>;
 
 #[derive(Deserialize)]
 pub struct Config {
+    #[serde(default)]
     pub start_with: Vec<EventName>,
     #[serde(default)]
     pub groups: IndexMap<String, PathBuf>,
@@ -33,6 +35,9 @@ pub struct Config {
     pub devices: IndexMap<PoolId, PathBuf>,
     #[serde(default)]
     pub metrics: Option<MetricsConfig>,
+    #[serde(default)]
+    pub initial_state: QueueState,
+    pub definition_path: Option<PathBuf>,
 }
 
 #[derive(Deserialize)]
@@ -75,6 +80,32 @@ pub struct ClientConfiguration {
     pub default_headers: Headers,
 }
 
+#[derive(Clone, Deserialize)]
+pub struct DefinitionEvent {
+    #[serde(default)]
+    pub arguments: HashMap<String, String>,
+    pub fields: HashMap<String, String>,
+    pub expressions: Vec<String>,
+    #[serde(default)]
+    pub capture_group_sizes: HashMap<String, u8>,
+}
+
+#[derive(Deserialize)]
+pub struct DefinitionConfig {
+    capture_group_sizes: HashMap<String, u8>,
+    events: IndexMap<String, DefinitionEvent>,
+}
+
+impl DefinitionConfig {
+    pub fn get(&self, key: &str) -> Option<DefinitionEvent> {
+        let mut event = self.events.get(key).cloned()?;
+        event
+            .capture_group_sizes
+            .extend(self.capture_group_sizes.clone());
+        Some(event)
+    }
+}
+
 pub fn location() -> Option<(f64, f64)> {
     LOCATION.get().copied()
 }
@@ -92,3 +123,6 @@ static LOCATION: OnceLock<(f64, f64)> = OnceLock::new();
 fn default_port() -> u16 {
     1883
 }
+
+#[cfg(test)]
+thread_local!(pub static INSTA_OUTPUT: std::cell::Cell<bool> = const { std::cell::Cell::new(false) });
