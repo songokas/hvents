@@ -210,7 +210,7 @@ events:
             pool_id: b
         data: server_response_b_
         next_event: write_to_file
-    
+
     write_to_file:
         file_write:
             file: $file
@@ -438,6 +438,7 @@ EOF
 
 
 test_all() {
+    cargo build --no-default-features
     cargo build
     cargo test
     test_command

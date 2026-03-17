@@ -1,12 +1,11 @@
 use anyhow::{Context, anyhow, bail};
 use clap::{Parser, ValueHint};
 use env_logger::Env;
-use hvents::config::{
-    ClientConfiguration, Config, DefinitionConfig, PoolId, QueueState, init_location, now,
-};
+use hvents::config::{Config, DefinitionConfig, PoolId, QueueState, init_location, now};
 use hvents::database::{self, KeyValueStore};
 #[cfg(feature = "tiny_http")]
 use hvents::events::api_listen::HttpQueue;
+#[allow(unused_imports)]
 use hvents::events::{EventMap, EventName, EventType, Events, NextEvent, ReferencingEvent};
 #[cfg(feature = "notify")]
 use hvents::executors::file::file_changed_executor;
@@ -148,7 +147,7 @@ fn main() -> Result<(), anyhow::Error> {
     if config.api.is_empty() {
         request_client_pool.configure(
             "default".to_string(),
-            &ClientConfiguration {
+            &hvents::config::ClientConfiguration {
                 default_headers: Default::default(),
             },
         )?;
@@ -296,7 +295,7 @@ fn main() -> Result<(), anyhow::Error> {
 fn validate_events(
     events: &Events,
     start_events: &Vec<EventName>,
-    http_listen: &IndexMap<PoolId, String>,
+    #[allow(unused_variables)] http_listen: &IndexMap<PoolId, String>,
     devices: &IndexMap<PoolId, PathBuf>,
 ) -> anyhow::Result<()> {
     if events.is_empty() {

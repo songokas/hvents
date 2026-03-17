@@ -1,6 +1,7 @@
 use core::str::from_utf8;
 use std::{borrow::Cow, io::Read};
 
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize, de};
 use serde_json::Value;
 use strum::EnumString;
@@ -156,6 +157,13 @@ impl From<Value> for Metadata {
     fn from(value: Value) -> Self {
         Metadata(value)
     }
+}
+
+#[derive(Serialize)]
+pub struct TemplateData<'a> {
+    pub data: &'a Data,
+    pub metadata: &'a Metadata,
+    pub state: &'a IndexMap<String, String>,
 }
 
 fn merge_json_value_recursive(a: &mut Value, b: Value) {

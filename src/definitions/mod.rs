@@ -1,17 +1,25 @@
+#[cfg(feature = "reqwest")]
 pub mod api_call;
+#[cfg(feature = "tiny_http")]
 pub mod api_listen;
 pub mod command;
 pub mod data_comparison;
+#[cfg(feature = "notify")]
 pub mod file_changed;
 pub mod file_read;
+#[cfg(feature = "notify")]
 pub mod file_watch;
 pub mod file_write;
+#[cfg(feature = "rumqttc")]
 pub mod mqtt_publish;
+#[cfg(feature = "rumqttc")]
 pub mod mqtt_subscribe;
+#[cfg(feature = "rumqttc")]
 pub mod mqtt_unsubscribe;
 pub mod once;
 pub mod period;
 pub mod print;
 pub mod repeat;
+#[cfg(all(unix, feature = "evdev"))]
 pub mod scan_code;
 pub mod state_modification;

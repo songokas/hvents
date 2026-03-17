@@ -41,11 +41,11 @@ release_dist() {
 }
 
 release_deb() {
-    if [[ $(docker images -q buster/cargo-deb 2> /dev/null) == "" ]]; then
-        docker build -t buster/cargo-deb builder
+    if [[ $(docker images -q bullseye/cargo-deb 2> /dev/null) == "" ]]; then
+        docker build -t bullseye/cargo-deb builder
     fi
     for target in ${DEB_RELEASE_TARGETS[@]}; do
-        docker run --mount type=bind,source="$(pwd)",target=/volume --rm buster/cargo-deb --target $target --no-build --no-strip
+        docker run --mount type=bind,source="$(pwd)",target=/volume --rm bullseye/cargo-deb --target $target --no-build --no-strip
         cp target/$target/debian/hvents*.deb dist/
     done
 }

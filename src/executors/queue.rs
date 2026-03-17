@@ -13,21 +13,21 @@ use rumqttc::QoS;
 
 #[cfg(feature = "tiny_http")]
 use crate::events::api_listen::ApiListenAction;
+#[cfg(feature = "notify")]
+use crate::events::file_watch::WatchAction;
 #[cfg(feature = "reqwest")]
 use crate::pools::api::ClientPool;
 #[cfg(feature = "tiny_http")]
 use crate::pools::http::HttpQueuePool;
 #[cfg(feature = "rumqttc")]
 use crate::pools::mqtt::MqttPool;
-#[cfg(feature = "handlebars")]
-use crate::renderer::TemplateData;
+
 use crate::{
     config::{QueueState, now},
     database::KeyValueStore,
     events::{
         EventType, Events, NextEvent, ReferencingEvent,
-        data::{Data, Metadata},
-        file_watch::WatchAction,
+        data::{Data, Metadata, TemplateData},
     },
 };
 
@@ -66,6 +66,7 @@ pub fn event_executor(
         }
     };
     scope(|thread_scope| {
+        #[allow(unused_labels)]
         'main: for mut received in queue_rx {
             counter!("hvents.queue.received_events", "event_type" => received.event_type.to_string())
                 .increment(1);
@@ -122,7 +123,6 @@ pub fn event_executor(
                 }
             }
 
-            #[cfg(feature = "handlebars")]
             let template_data = TemplateData {
                 data: &received.data,
                 metadata: &received.metadata,
@@ -403,6 +403,7 @@ pub fn event_executor(
                         }
                     }
                 },
+                #[allow(unused_mut)]
                 EventType::Execute(mut c) => {
                     debug!(
                         "Executing command name={} with initial arguments {:?}",
@@ -426,6 +427,7 @@ pub fn event_executor(
                             }
                         };
                     }
+                    #[cfg(feature = "handlebars")]
                     args.retain(|s| !s.trim().is_empty());
 
                     counter!("hvents.command.executed", "command" => c.command.to_string())
@@ -453,10 +455,13 @@ pub fn event_executor(
                     continue;
                 }
                 EventType::Print(e) => {
+                    #[cfg(feature = "handlebars")]
                     match handlebars.render_template(&e.template, &template_data) {
-                        Ok(s) => e.run(s.trim()),
+                        Ok(s) => e.display(s.trim()),
                         Err(e) => error!("Failed to render print template {e}"),
                     }
+                    #[cfg(not(feature = "handlebars"))]
+                    e.debug(&template_data.data)
                 }
                 EventType::Forward => (),
                 #[cfg(all(unix, feature = "evdev"))]

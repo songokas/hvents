@@ -2,14 +2,9 @@ use handlebars::{
     Context, Handlebars, Helper, HelperResult, JsonRender, Output, RenderContext, RenderErrorReason,
 };
 use human_date_parser::{ParseResult, from_human_time};
-use indexmap::IndexMap;
-use serde::Serialize;
 use std::fmt::Write;
 
-use crate::{
-    config::now,
-    events::data::{Data, Metadata},
-};
+use crate::config::now;
 
 pub fn load_handlebars() -> Handlebars<'static> {
     let mut handlebars = Handlebars::new();
@@ -49,13 +44,6 @@ pub fn add_metrics(
             },
         ),
     );
-}
-
-#[derive(Serialize)]
-pub struct TemplateData<'a> {
-    pub data: &'a Data,
-    pub metadata: &'a Metadata,
-    pub state: &'a IndexMap<String, String>,
 }
 
 fn date_time_helper(

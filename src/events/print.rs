@@ -1,3 +1,4 @@
+use core::fmt::Debug;
 use core::str::FromStr;
 
 use serde::{Deserialize, Serialize};
@@ -9,10 +10,17 @@ pub struct PrintEvent {
 }
 
 impl PrintEvent {
-    pub fn run(&self, data: &str) {
+    pub fn display(&self, data: &str) {
         match self.output {
             Output::Stdout => println!("{data}"),
             Output::Stderr => eprintln!("{data}"),
+        }
+    }
+
+    pub fn debug(&self, data: impl Debug) {
+        match self.output {
+            Output::Stdout => println!("{data:?}"),
+            Output::Stderr => eprintln!("{data:?}"),
         }
     }
 }

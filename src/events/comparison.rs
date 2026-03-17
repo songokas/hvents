@@ -3,7 +3,7 @@ use core::str::FromStr;
 use serde::{Deserialize, Serialize};
 use strum::EnumString;
 
-use crate::renderer::TemplateData;
+use crate::events::data::TemplateData;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

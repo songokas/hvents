@@ -11,20 +11,14 @@ license = "LICENSE"
 readme = "README.md"
 
 [dependencies]
-reqwest = { version = "0.12", default-features = false, features = [
-    "charset",
-    "blocking",
-    "http2",
-    "macos-system-configuration",
-    "rustls-tls",
-], optional = true }
+reqwest = { version = "0.13", optional = true, features = ["blocking"]}
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["derive"] }
 env_logger = "0.11"
 handlebars = { version = "6", optional = true }
 human-date-parser = "0.3"
 log = "0.4"
-rumqttc = { version = "0.24", optional = true }
+rumqttc = { version = "0.25", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"

@@ -61,6 +61,7 @@ events:
       - mqtt message from topic {topic} with {body} using {pool_id}
       - mqtt message from topic {topic} with {body}
       - mqtt message from topic {topic} using {pool_id}
+
   mqtt_unsubscribe:
     fields:
       topic: string
@@ -99,8 +100,6 @@ events:
       - http {method} {request_body} to {url}
       - http {method} {url} with headers {headers}
       - http {method} {url}
-      -
-      -
 
   api_listen:
     fields:

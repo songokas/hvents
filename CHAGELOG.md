@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - define initial state using configuration
 - handlebars helper: concat
 
+### Changed
+
+- bump package versions
+- scheme json is using local url
+
 ## [0.5.0] - 2025-07-24
 
 ### Added
