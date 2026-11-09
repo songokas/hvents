@@ -116,10 +116,9 @@ pub fn event_executor(
                 }
                 let state_changed = !new_state.is_empty();
                 state.extend(new_state);
-                if state_changed
-                    && let Err(e) = database.insert(STATE_KEY, &state) {
-                        warn!("Unable to save state {e}");
-                    }
+                if state_changed && let Err(e) = database.insert(STATE_KEY, &state) {
+                    warn!("Unable to save state {e}");
+                }
             }
 
             let template_data = TemplateData {

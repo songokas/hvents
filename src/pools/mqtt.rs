@@ -21,9 +21,10 @@ impl MqttPool {
             config.port,
         );
         if let Some(user) = config.user
-            && let Some(pass) = config.pass {
-                mqtt_options.set_credentials(user, pass);
-            }
+            && let Some(pass) = config.pass
+        {
+            mqtt_options.set_credentials(user, pass);
+        }
 
         mqtt_options.set_keep_alive(Duration::from_secs(5));
 

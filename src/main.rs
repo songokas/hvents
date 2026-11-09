@@ -330,12 +330,12 @@ fn validate_events(
         && let Some(e) = events
             .iter()
             .find(|e| matches!(e.event_type, EventType::ApiListen(_)))
-        {
-            bail!(
-                "Please provide http configuration e.g. http: default: 127.0.0.1:8222 in order to use api_listen events. api_listen is provided in {}",
-                e.name
-            );
-        }
+    {
+        bail!(
+            "Please provide http configuration e.g. http: default: 127.0.0.1:8222 in order to use api_listen events. api_listen is provided in {}",
+            e.name
+        );
+    }
 
     // validate scan codes
     if devices.is_empty() {
