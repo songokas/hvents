@@ -1,6 +1,6 @@
 [package]
 name = "hvents"
-version = "0.5.1"
+version = "0.5.2"
 edition = "2024"
 
 authors = ["Tomas Jakstas <tom.jakstas@gmail.com>"]
@@ -11,7 +11,7 @@ license = "LICENSE"
 readme = "README.md"
 
 [dependencies]
-reqwest = { version = "0.13", optional = true, features = ["blocking"]}
+reqwest = { version = "0.13", optional = true, features = ["blocking"] }
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["derive"] }
 env_logger = "0.11"

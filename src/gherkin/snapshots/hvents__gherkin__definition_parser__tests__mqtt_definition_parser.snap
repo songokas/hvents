@@ -1,0 +1,197 @@
+---
+source: src/gherkin/definition_parser.rs
+expression: events
+snapshot_kind: text
+---
+- "Subscribe with fuzzy match mqtt message from topic \"sensors/+/temp\" and body fuzzy matches \"temperature\"":
+    name: "Subscribe with fuzzy match mqtt message from topic \"sensors/+/temp\" and body fuzzy matches \"temperature\""
+    mqtt_subscribe:
+      topic: sensors/+/temp
+      fuzzy_matches: temperature
+      pool_id: ""
+      fuzzy_threshold: 0.75
+    next_event: "Subscribe with fuzzy match print to stdout \"Temperature received: {{data}}\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Subscribe with fuzzy match print to stdout \"Temperature received: {{data}}\"":
+    name: "Subscribe with fuzzy match print to stdout \"Temperature received: {{data}}\""
+    print:
+      template: "Temperature received: {{data}}"
+      output: stdout
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Subscribe with fuzzy match any mqtt message from topic \"sensors/+/status\" and body fuzzy matches any \"on,off,idle\"":
+    name: "Subscribe with fuzzy match any mqtt message from topic \"sensors/+/status\" and body fuzzy matches any \"on,off,idle\""
+    mqtt_subscribe:
+      topic: sensors/+/status
+      fuzzy_matches_any:
+        - "on"
+        - "off"
+        - idle
+      pool_id: ""
+      fuzzy_threshold: 0.75
+    next_event: "Subscribe with fuzzy match any print to stdout \"Status: {{data}}\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Subscribe with fuzzy match any print to stdout \"Status: {{data}}\"":
+    name: "Subscribe with fuzzy match any print to stdout \"Status: {{data}}\""
+    print:
+      template: "Status: {{data}}"
+      output: stdout
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Subscribe with body type and pool id mqtt message from topic \"home/+/state\" and body contains \"active\" using \"secondary\"":
+    name: "Subscribe with body type and pool id mqtt message from topic \"home/+/state\" and body contains \"active\" using \"secondary\""
+    mqtt_subscribe:
+      topic: home/+/state
+      body_contains: active
+      pool_id: secondary
+      fuzzy_threshold: 0.75
+    next_event: "Subscribe with body type and pool id print to stdout \"Active: {{data}}\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Subscribe with body type and pool id print to stdout \"Active: {{data}}\"":
+    name: "Subscribe with body type and pool id print to stdout \"Active: {{data}}\""
+    print:
+      template: "Active: {{data}}"
+      output: stdout
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Subscribe with pool id mqtt message from topic \"home/alerts\" using \"alerts_pool\"":
+    name: "Subscribe with pool id mqtt message from topic \"home/alerts\" using \"alerts_pool\""
+    mqtt_subscribe:
+      topic: home/alerts
+      pool_id: alerts_pool
+      fuzzy_threshold: 0.75
+    next_event: "Subscribe with pool id print to stdout \"Alert: {{data}}\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Subscribe with pool id print to stdout \"Alert: {{data}}\"":
+    name: "Subscribe with pool id print to stdout \"Alert: {{data}}\""
+    print:
+      template: "Alert: {{data}}"
+      output: stdout
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Publish with retain every \"in 5 seconds\"":
+    name: "Publish with retain every \"in 5 seconds\""
+    repeat:
+      execute_time: hidden
+      event_id: ~
+    next_event: "Publish with retain mqtt publish to topic \"home/status\" with body \"online\" retain"
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Publish with retain mqtt publish to topic \"home/status\" with body \"online\" retain":
+    name: "Publish with retain mqtt publish to topic \"home/status\" with body \"online\" retain"
+    mqtt_publish:
+      topic: home/status
+      body: online
+      retain: true
+      pool_id: ""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Publish with pool id every \"in 10 seconds\"":
+    name: "Publish with pool id every \"in 10 seconds\""
+    repeat:
+      execute_time: hidden
+      event_id: ~
+    next_event: "Publish with pool id mqtt publish to topic \"secondary/status\" with body \"ok\" using \"secondary\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Publish with pool id mqtt publish to topic \"secondary/status\" with body \"ok\" using \"secondary\"":
+    name: "Publish with pool id mqtt publish to topic \"secondary/status\" with body \"ok\" using \"secondary\""
+    mqtt_publish:
+      topic: secondary/status
+      body: ok
+      retain: false
+      pool_id: secondary
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Unsubscribe mqtt message from topic \"home/shutdown\"":
+    name: "Unsubscribe mqtt message from topic \"home/shutdown\""
+    mqtt_subscribe:
+      topic: home/shutdown
+      pool_id: ""
+      fuzzy_threshold: 0.75
+    next_event: "Unsubscribe mqtt unsubscribe \"home/alerts\" using \"alerts_pool\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Unsubscribe mqtt unsubscribe \"home/alerts\" using \"alerts_pool\"":
+    name: "Unsubscribe mqtt unsubscribe \"home/alerts\" using \"alerts_pool\""
+    mqtt_unsubscribe:
+      topic: home/alerts
+      pool_id: alerts_pool
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Active during daytime only mqtt message from topic \"home/sensor\"":
+    name: "Active during daytime only mqtt message from topic \"home/sensor\""
+    mqtt_subscribe:
+      topic: home/sensor
+      pool_id: ""
+      fuzzy_threshold: 0.75
+    next_event: "Active during daytime only between \"08:00\" and \"22:00\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Active during daytime only between \"08:00\" and \"22:00\"":
+    name: "Active during daytime only between \"08:00\" and \"22:00\""
+    period:
+      from:
+        time:
+          - "08:00:00"
+          - "08:00"
+      to:
+        time:
+          - "22:00:00"
+          - "22:00"
+    next_event: "Active during daytime only print to stdout \"Daytime sensor: {{data}}\""
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+  "Active during daytime only print to stdout \"Daytime sensor: {{data}}\"":
+    name: "Active during daytime only print to stdout \"Daytime sensor: {{data}}\""
+    print:
+      template: "Daytime sensor: {{data}}"
+      output: stdout
+    metadata: ~
+    state: ~
+    data: ~
+    merge_data: yes_if_empty
+- - "Subscribe with fuzzy match mqtt message from topic \"sensors/+/temp\" and body fuzzy matches \"temperature\""
+  - "Subscribe with fuzzy match any mqtt message from topic \"sensors/+/status\" and body fuzzy matches any \"on,off,idle\""
+  - "Subscribe with body type and pool id mqtt message from topic \"home/+/state\" and body contains \"active\" using \"secondary\""
+  - "Subscribe with pool id mqtt message from topic \"home/alerts\" using \"alerts_pool\""
+  - "Publish with retain every \"in 5 seconds\""
+  - "Publish with pool id every \"in 10 seconds\""
+  - "Unsubscribe mqtt message from topic \"home/shutdown\""
+  - "Active during daytime only mqtt message from topic \"home/sensor\""

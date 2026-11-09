@@ -167,8 +167,8 @@ pub struct TemplateData<'a> {
 }
 
 fn merge_json_value_recursive(a: &mut Value, b: Value) {
-    if let Value::Object(a) = a {
-        if let Value::Object(b) = b {
+    if let Value::Object(a) = a
+        && let Value::Object(b) = b {
             for (k, v) in b {
                 if v.is_null() {
                     a.remove(&k);
@@ -179,7 +179,6 @@ fn merge_json_value_recursive(a: &mut Value, b: Value) {
 
             return;
         }
-    }
     *a = b;
 }
 

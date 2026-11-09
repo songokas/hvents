@@ -131,6 +131,32 @@
                 }
             },
             "uniqueItems": true
+        },
+        "restore": {
+            "description": "URI to restore event state from on startup",
+            "type": "string"
+        },
+        "definition_path": {
+            "description": "Path to a configuration file defining available gherkin expressions",
+            "type": "string"
+        },
+        "metrics": {
+            "description": "OpenTelemetry metrics configuration",
+            "type": "object",
+            "properties": {
+                "instance_id": {
+                    "type": "string"
+                },
+                "service_name": {
+                    "type": "string"
+                },
+                "service_version": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "instance_id"
+            ]
         }
     }
 }

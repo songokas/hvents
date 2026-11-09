@@ -6,7 +6,7 @@ use std::{
 };
 
 use indexmap::IndexMap;
-use log::{debug, info};
+use log::{debug, info, warn};
 use metrics::{counter, gauge};
 
 use crate::{
@@ -47,7 +47,9 @@ pub fn timed_executor(
                     .map(|t| t.execute_time.to_string())
                     .unwrap_or_else(|| "instant".to_string())
             );
-            database.insert(&event_id, &time_event)?;
+            if let Err(e) = database.insert(&event_id, &time_event) {
+                warn!("Unable to persist time event id={event_id}: {e:#}");
+            }
             if let Some(e) = events_to_execute.insert(event_id, time_event) {
                 debug!("Previous event {} with the same id removed", e.name);
             }
@@ -75,6 +77,7 @@ pub fn timed_executor(
                 .expect("event must exist");
 
             next_event.merge(current_event.data.clone());
+            next_event.metadata = current_event.metadata.clone();
             debug!("Queue next event={}", next_event.event_id());
             queue_tx.send(next_event)?;
 
@@ -231,7 +234,7 @@ mod tests {
 
     #[test]
     fn test_executor_repeat_event() {
-        let events = [
+        let mut events = [
             create_time_event(
                 now() + chrono::Duration::seconds(5),
                 "test1",
@@ -248,6 +251,7 @@ mod tests {
             ),
             create_time_event(now(), "test3", None, None, json!({ "test3": "text" })),
         ];
+        events[1].metadata = json!({"meta": "yes"}).into();
         let tevents = Events::new(events.clone().into_iter().collect());
         let (timer_tx, timer_rx) = channel();
         let (queue_tx, queue_rx) = channel();
@@ -267,6 +271,7 @@ mod tests {
         let event = queue_rx.recv_timeout(Duration::from_millis(200)).unwrap();
         assert_eq!(event.name, "test3");
         assert_eq!(event.data, json!({ "test2": "text", "test3": "text" }));
+        assert_eq!(event.metadata.get("meta"), Some("yes"));
 
         // event repeated
         let event = queue_rx.recv_timeout(Duration::from_millis(200)).unwrap();

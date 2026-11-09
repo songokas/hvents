@@ -43,13 +43,20 @@ events:
     fields:
       topic: string
       body: string
+      retain: retain
+      pool_id: string
+    arguments:
+      retain: retain
     expressions:
       - mqtt publish (to topic ){topic} with body {body}
       - mqtt publish {body} to {topic}
+      - mqtt publish (to topic ){topic} with body {body} {retain}
+      - mqtt publish (to topic ){topic} with body {body} using {pool_id}
+      - mqtt publish {body} to {topic} using {pool_id}
 
   mqtt_subscribe:
     arguments:
-      body_type: contains|contains any|matches|matches any
+      body_type: contains|contains any|matches|matches any|fuzzy matches|fuzzy matches any
     fields:
       topic: string
       body: string
@@ -61,6 +68,7 @@ events:
       - mqtt message from topic {topic} with {body} using {pool_id}
       - mqtt message from topic {topic} with {body}
       - mqtt message from topic {topic} using {pool_id}
+      - mqtt message from topic {topic} and body {body_type} {body} using {pool_id}
 
   mqtt_unsubscribe:
     fields:
@@ -100,6 +108,9 @@ events:
       - http {method} {request_body} to {url}
       - http {method} {url} with headers {headers}
       - http {method} {url}
+      - http {method} {request_body} as {request_type} to {url}
+      - http {method} {request_body} as {request_type} to {url} expect {response_type}
+      - http {method} {request_body} as {request_type} to {url} with headers {headers}
 
   api_listen:
     fields:
@@ -112,6 +123,9 @@ events:
       - http {path} is called with {method} and {request_content} respond with {response_body}
       - http {path} is called with {method} respond with {response_body}
       - http {path} is called respond with {response_body}
+      - http {path} is called respond with {response_body} as {response_content}
+      - http {path} is called with {method} respond with {response_body} as {response_content}
+      - http {path} is called with {method} and {request_content} respond with {response_body} as {response_content}
 
   file_read:
     fields:
@@ -159,4 +173,5 @@ events:
       from: string
       to: string
     expressions:
-      - withing period {from} {to}
+      - within period {from} {to}
+      - between {from} and {to}

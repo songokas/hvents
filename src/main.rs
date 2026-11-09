@@ -26,7 +26,7 @@ use hvents::pools::mqtt::MqttPool;
 #[cfg(feature = "handlebars")]
 use hvents::renderer::load_handlebars;
 use indexmap::IndexMap;
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 use metrics::gauge;
 #[cfg(feature = "notify")]
 use notify::{RecommendedWatcher, Watcher};
@@ -36,8 +36,6 @@ use std::{sync::mpsc, thread};
 
 #[cfg(all(unix, feature = "evdev"))]
 use hvents::executors::evdev::evdev_executor;
-#[cfg(all(unix, feature = "evdev"))]
-use log::error;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -284,8 +282,13 @@ fn main() -> Result<(), anyhow::Error> {
                 queue_tx.send(event)?;
             }
         }
-        let _timer_handle =
-            s.spawn(|| timed_executor(&events, time_events, timer_rx, queue_tx.clone(), database));
+        let _timer_handle = s.spawn(|| {
+            if let Err(e) =
+                timed_executor(&events, time_events, timer_rx, queue_tx.clone(), database)
+            {
+                error!("Timer executor failed: {e:#}");
+            }
+        });
         handle_count += 1;
         debug!("Executor count {handle_count}");
         Ok(())
@@ -323,8 +326,8 @@ fn validate_events(
 
     // validate http
     #[cfg(feature = "tiny_http")]
-    if http_listen.is_empty() {
-        if let Some(e) = events
+    if http_listen.is_empty()
+        && let Some(e) = events
             .iter()
             .find(|e| matches!(e.event_type, EventType::ApiListen(_)))
         {
@@ -333,7 +336,6 @@ fn validate_events(
                 e.name
             );
         }
-    }
 
     // validate scan codes
     if devices.is_empty() {

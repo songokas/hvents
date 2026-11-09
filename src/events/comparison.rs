@@ -57,8 +57,8 @@ impl ComparisonEvent {
         };
 
         match self.operation {
-            ComparisonOperation::Equal => v == &self.value,
-            ComparisonOperation::NotEqual => v != &self.value,
+            ComparisonOperation::Equal => v == self.value,
+            ComparisonOperation::NotEqual => v != self.value,
             ComparisonOperation::Lt => v < self.value.as_str(),
             ComparisonOperation::Gt => v > self.value.as_str(),
         }

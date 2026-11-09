@@ -63,7 +63,7 @@ impl KeyValueStore for Store {
 mod filesystem {
     use std::{
         fs::{File, remove_file},
-        path::Path,
+        path::{Path, PathBuf},
     };
 
     use anyhow::Context;
@@ -76,28 +76,55 @@ mod filesystem {
         pub directory: String,
     }
 
+    impl FileSystem {
+        /// Escapes the key so it always maps to a single file inside the directory
+        fn path(&self, key: &str) -> PathBuf {
+            let file_name = key
+                .replace('%', "%25")
+                .replace('/', "%2F")
+                .replace('\\', "%5C");
+            Path::new(&self.directory).join(file_name)
+        }
+    }
+
     impl KeyValueStore for FileSystem {
         fn insert<T: Serialize>(&mut self, key: &str, data: &T) -> Result<(), anyhow::Error> {
-            let path = Path::new(&self.directory).join(key);
+            let path = self.path(key);
             let file = File::options()
                 .create(true)
                 .truncate(true)
                 .write(true)
                 .open(&path)
-                .with_context(|| "Can not write file {path}")?;
+                .with_context(|| format!("Can not write file {}", path.display()))?;
             serde_json::to_writer(file, data)?;
             Ok(())
         }
 
         fn get<T: DeserializeOwned>(&self, key: &str) -> Option<T> {
-            let path = Path::new(&self.directory).join(key);
+            let path = self.path(key);
             let file = File::options().read(true).open(&path).ok()?;
             serde_json::from_reader(file).ok()
         }
 
         fn remove(&mut self, key: &str) -> bool {
-            let path = Path::new(&self.directory).join(key);
-            remove_file(path).is_ok()
+            remove_file(self.path(key)).is_ok()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_filesystem_key_with_slash() {
+        let dir = std::env::temp_dir().join("hvents_test_filesystem_key_with_slash");
+        let mut store = init(dir.to_str());
+        let key = "run every a/b \\ 100%";
+        store.insert(key, &"data").unwrap();
+        assert_eq!(store.get::<String>(key).as_deref(), Some("data"));
+        assert!(store.remove(key));
+        assert_eq!(store.get::<String>(key), None);
+        std::fs::remove_dir_all(dir).unwrap();
     }
 }

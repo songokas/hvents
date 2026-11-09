@@ -18,7 +18,7 @@ build() {
 }
 
 build_pi() {
-    cross build --target "arm-unknown-linux-gnueabihf" --release
+    cross build --target "aarch64-unknown-linux-gnu" --release
 }
 
 release_bins() {
@@ -41,11 +41,11 @@ release_dist() {
 }
 
 release_deb() {
-    if [[ $(docker images -q bullseye/cargo-deb 2> /dev/null) == "" ]]; then
-        docker build -t bullseye/cargo-deb builder
+    if [[ $(docker images -q bookworm/cargo-deb 2> /dev/null) == "" ]]; then
+        docker build -t bookworm/cargo-deb builder
     fi
     for target in ${DEB_RELEASE_TARGETS[@]}; do
-        docker run --mount type=bind,source="$(pwd)",target=/volume --rm bullseye/cargo-deb --target $target --no-build --no-strip
+        docker run --mount type=bind,source="$(pwd)",target=/volume --rm bookworm/cargo-deb --target $target --no-build --no-strip
         cp target/$target/debian/hvents*.deb dist/
     done
 }

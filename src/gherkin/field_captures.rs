@@ -29,11 +29,7 @@ impl<'a> FieldCaptures<'a> {
         };
         indexes
             .iter()
-            .find_map(|index| {
-                self.captures
-                    .get(*index)
-                    .map(|m| m.as_str().parse().map_err(Into::into))
-            })
+            .find_map(|index| self.captures.get(*index).map(|m| m.as_str().parse()))
             .transpose()
     }
 

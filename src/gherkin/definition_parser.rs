@@ -166,4 +166,16 @@ mod tests {
         assert_yaml_snapshot!(events);
         INSTA_OUTPUT.set(false);
     }
+
+    #[test]
+    fn test_mqtt_definition_parser() {
+        let config = serde_yaml::from_str(include_str!("../definitions/definitions.yaml")).unwrap();
+        let definitions = create_definitions(config).unwrap();
+        let events =
+            create_events_from_definitions(Path::new("examples/mqtt.feature"), &definitions)
+                .unwrap();
+        INSTA_OUTPUT.set(true);
+        assert_yaml_snapshot!(events);
+        INSTA_OUTPUT.set(false);
+    }
 }

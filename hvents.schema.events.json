@@ -76,8 +76,31 @@
                         },
                         "body": {
                             "type": "string"
+                        },
+                        "retain": {
+                            "type": "boolean"
+                        },
+                        "pool_id": {
+                            "type": "string"
                         }
                     }
+                },
+                "mqtt_unsubscribe": {
+                    "type": [
+                        "object",
+                        "string"
+                    ],
+                    "properties": {
+                        "topic": {
+                            "type": "string"
+                        },
+                        "pool_id": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "topic"
+                    ]
                 },
                 "repeat": {
                     "type": [
@@ -161,6 +184,9 @@
                         },
                         "response_content": {
                             "$ref": "#/$defs/content_type"
+                        },
+                        "pool_id": {
+                            "type": "string"
                         }
                     }
                 },
@@ -263,6 +289,45 @@
                         "path"
                     ]
                 },
+                "comparison": {
+                    "type": "object",
+                    "properties": {
+                        "data_to_compare": {
+                            "enum": [
+                                "data",
+                                "metadata",
+                                "state"
+                            ]
+                        },
+                        "key": {
+                            "type": "string"
+                        },
+                        "operation": {
+                            "enum": [
+                                "equal",
+                                "not_equal",
+                                "lt",
+                                "gt"
+                            ]
+                        },
+                        "value": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "data_to_compare",
+                        "key",
+                        "operation",
+                        "value"
+                    ]
+                },
+                "scan_code_read": {
+                    "type": [
+                        "integer",
+                        "string"
+                    ],
+                    "description": "Scan code as integer or hex string (e.g. 30 or \"0x1e\")"
+                },
                 "forward": {},
                 "print": {
                     "type": [
@@ -296,7 +361,8 @@
                     "enum": [
                         "yes",
                         "no",
-                        "overwrite"
+                        "overwrite",
+                        "yes_if_empty"
                     ]
                 },
                 "data": {

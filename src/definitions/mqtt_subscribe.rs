@@ -54,7 +54,7 @@ fn create_event(c: FieldCaptures) -> Result<ReferencingEvent, anyhow::Error> {
             pool_id: c.get("pool_id").unwrap_or_default(),
             fuzzy_threshold: c
                 .get_as("fuzzy_threshold")?
-                .unwrap_or_else(|| fuzzy_threshold_default()),
+                .unwrap_or_else(fuzzy_threshold_default),
         }),
         ..Default::default()
     })
